@@ -32,7 +32,7 @@ Serve that folder from a web server that also proxies `/api` to the backend (the
 
 ## Deploy on Render
 
-[render.yaml](render.yaml) is a Render Blueprint with two services: `vancha-yagna-backend` (Docker, Spring Boot) and `vancha-yagna` (static Angular PWA). The backend uses the existing production database `parasabha_planner` and keeps its tables in its own schema, `vanchan-yagna`, which it creates on first start (`DB_SCHEMA`).
+[render.yaml](render.yaml) is a Render Blueprint with two services: `vanchan-yagna-backend` (Docker, Spring Boot) and `vanchan-yagna` (static Angular PWA). The backend uses the existing production database `parasabha_planner` and keeps its tables in its own schema, `vanchan-yagna`, which it creates on first start (`DB_SCHEMA`).
 
 1. In Render choose **New > Blueprint**, connect this repo and apply `render.yaml`.
 2. When prompted, fill `DB_HOST`, `DB_USERNAME` and `DB_PASSWORD` from the `parasabha-planner-db` *Internal Database URL* (same region as the backend, `oregon`).

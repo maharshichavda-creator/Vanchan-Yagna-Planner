@@ -6,7 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const apiBaseUrl = process.env.API_BASE_URL || 'https://vancha-yagna-backend.onrender.com/api';
+const apiBaseUrl = process.env.API_BASE_URL || 'https://vanchan-yagna-backend.onrender.com/api';
 
 const content = `export const environment = {
   production: true,
