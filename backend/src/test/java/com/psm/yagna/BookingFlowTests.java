@@ -12,6 +12,7 @@ import com.psm.yagna.dto.HaribhaktDto;
 import com.psm.yagna.dto.HaribhaktLoginRequest;
 import com.psm.yagna.dto.ShravanBookingDto;
 import com.psm.yagna.dto.StatusReportDto;
+import com.psm.yagna.dto.VanchanBookDto;
 import com.psm.yagna.dto.VanchanBookingDto;
 import com.psm.yagna.exception.ConflictException;
 import com.psm.yagna.exception.ForbiddenException;
@@ -21,6 +22,7 @@ import com.psm.yagna.service.ShravanService;
 import com.psm.yagna.service.StatusReportService;
 import com.psm.yagna.service.VanchanService;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -142,18 +144,36 @@ class BookingFlowTests {
         assertThat(shravanService.list(a.id())).hasSize(2);
     }
 
+    private GroupVanchanRequest groupRequest(Long groupNameId, String... names) {
+        List<VanchanBookDto> books = groupVanchanService.books();
+        List<GroupVanchanRequest.Assignment> assignments = new ArrayList<>();
+        for (int i = 0; i < books.size(); i++) {
+            assignments.add(new GroupVanchanRequest.Assignment(books.get(i).id(), names[i]));
+        }
+        return new GroupVanchanRequest(groupNameId, null, assignments);
+    }
+
     @Test
-    void groupVanchanIsCreatedFromListedGroupNameAndCompleted() {
+    void groupVanchanAssignsOneHaribhaktToEveryBook() {
         GroupNameDto groupName = groupVanchanService.groupNames().get(0);
 
-        GroupVanchanDto created = groupVanchanService.create(
-                new GroupVanchanRequest(groupName.id(), null, List.of(" Ram ", "Shyam", "ram", "")));
+        GroupVanchanDto created = groupVanchanService.create(groupRequest(groupName.id(), " Ram ", "Shyam"));
 
         assertThat(created.groupName()).isEqualTo(groupName.name());
-        assertThat(created.members()).containsExactly("Ram", "Shyam", "ram");
+        assertThat(created.members()).extracting(GroupVanchanDto.MemberDto::name).containsExactly("Ram", "Shyam");
+        assertThat(created.members()).extracting(GroupVanchanDto.MemberDto::bookTitle).containsExactly("Test Book A", "Test Book B");
         assertThat(created.status()).isEqualTo(BookingStatus.BOOKED);
-        assertThat(groupVanchanService.complete(created.id()).status()).isEqualTo(BookingStatus.COMPLETED);
         assertThat(groupVanchanService.list()).hasSize(1);
+
+        List<VanchanBookDto> books = groupVanchanService.books();
+        GroupNameDto other = groupVanchanService.groupNames().get(0);
+        assertThatThrownBy(() -> groupVanchanService.create(new GroupVanchanRequest(other.id(), null,
+                List.of(new GroupVanchanRequest.Assignment(books.get(0).id(), "Ram")))))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> groupVanchanService.create(new GroupVanchanRequest(other.id(), null,
+                List.of(new GroupVanchanRequest.Assignment(books.get(0).id(), "Ram"),
+                        new GroupVanchanRequest.Assignment(books.get(0).id(), "Shyam")))))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -164,7 +184,7 @@ class BookingFlowTests {
         vanchanService.complete(vanchan.id(), ram.id());
         shravanService.book(ram.id(), DAY);
         GroupNameDto groupName = groupVanchanService.groupNames().get(0);
-        groupVanchanService.create(new GroupVanchanRequest(groupName.id(), null, List.of("Ram", "Stranger")));
+        groupVanchanService.create(groupRequest(groupName.id(), "Ram", "Stranger"));
 
         assertThatThrownBy(() -> statusReportService.report(ram.id())).isInstanceOf(ForbiddenException.class);
 
@@ -176,27 +196,45 @@ class BookingFlowTests {
         assertThat(report.summary().shravan()).isEqualTo(new StatusReportDto.Counts(1, 1, 0));
         assertThat(report.summary().groupVanchan()).isEqualTo(new StatusReportDto.Counts(1, 1, 0));
         assertThat(report.groups().get(0).members()).extracting(m -> m.mandal()).containsExactly("NIBM", null);
+        assertThat(report.groups().get(0).members()).extracting(m -> m.bookTitle()).containsExactly("Test Book A", "Test Book B");
     }
 
     @Test
     void groupProgressIsStoredPerMemberAndShownAsPercentageOfAllPages() {
         GroupNameDto groupName = groupVanchanService.groupNames().get(0);
-        GroupVanchanDto created = groupVanchanService.create(
-                new GroupVanchanRequest(groupName.id(), null, List.of("Ram", "Shyam")));
+        GroupVanchanDto created = groupVanchanService.create(groupRequest(groupName.id(), "Ram", "Shyam"));
         assertThat(created.totalPages()).isEqualTo(30);
         assertThat(created.pagesRead()).isZero();
 
         GroupVanchanDto updated = groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(6, 9)));
 
-        assertThat(updated.memberPages()).containsExactly(6, 9);
+        assertThat(updated.members()).extracting(GroupVanchanDto.MemberDto::pagesRead).containsExactly(6, 9);
         assertThat(updated.pagesRead()).isEqualTo(15);
         assertThat(updated.percentComplete()).isEqualTo(50.0);
+        assertThat(updated.status()).isEqualTo(BookingStatus.BOOKED);
         assertThat(groupVanchanService.list().get(0).percentComplete()).isEqualTo(50.0);
 
-        assertThatThrownBy(() -> groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(20, 11))))
+        // Book A has 20 pages and Book B has 10: no haribhakt can have read more than the book holds
+        assertThatThrownBy(() -> groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(21, 0))))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(5, 11))))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(1))))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void groupCompletesAutomaticallyWhenAllPagesAreReadAndReopensIfLowered() {
+        GroupNameDto groupName = groupVanchanService.groupNames().get(0);
+        GroupVanchanDto created = groupVanchanService.create(groupRequest(groupName.id(), "Ram", "Shyam"));
+
+        GroupVanchanDto done = groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(20, 10)));
+        assertThat(done.pagesRead()).isEqualTo(30);
+        assertThat(done.percentComplete()).isEqualTo(100.0);
+        assertThat(done.status()).isEqualTo(BookingStatus.COMPLETED);
+
+        GroupVanchanDto reopened = groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(20, 9)));
+        assertThat(reopened.status()).isEqualTo(BookingStatus.BOOKED);
     }
 
     @Test
@@ -204,11 +242,11 @@ class BookingFlowTests {
         GroupNameDto groupName = groupVanchanService.groupNames().get(0);
         int before = groupVanchanService.groupNames().size();
 
-        groupVanchanService.create(new GroupVanchanRequest(groupName.id(), null, List.of("Ram")));
+        groupVanchanService.create(groupRequest(groupName.id(), "Ram", "Ram"));
 
         assertThat(groupVanchanService.groupNames()).extracting(GroupNameDto::id).doesNotContain(groupName.id());
         assertThat(groupVanchanService.groupNames()).hasSize(before - 1);
-        assertThatThrownBy(() -> groupVanchanService.create(new GroupVanchanRequest(groupName.id(), null, List.of("Shyam"))))
+        assertThatThrownBy(() -> groupVanchanService.create(groupRequest(groupName.id(), "Shyam", "Shyam")))
                 .isInstanceOf(ConflictException.class);
     }
 }

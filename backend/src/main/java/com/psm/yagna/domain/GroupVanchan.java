@@ -53,10 +53,10 @@ public class GroupVanchan {
     protected GroupVanchan() {
     }
 
-    public GroupVanchan(GroupName groupName, LocalDate vanchanDate, List<String> members) {
+    public GroupVanchan(GroupName groupName, LocalDate vanchanDate, List<GroupVanchanMember> members) {
         this.groupName = groupName;
         this.vanchanDate = vanchanDate;
-        this.members = new ArrayList<>(members.stream().map(GroupVanchanMember::new).toList());
+        this.members = new ArrayList<>(members);
     }
 
     /** Sets the pages read for each member, in member order. */
@@ -70,9 +70,19 @@ public class GroupVanchan {
         return members.stream().mapToInt(GroupVanchanMember::getPagesRead).sum();
     }
 
-    public void markCompleted() {
-        this.status = BookingStatus.COMPLETED;
-        this.completedAt = Instant.now();
+    /**
+     * A group is completed automatically once all pages of all books have been read; lowering the numbers
+     * again (e.g. to correct a mistake) puts it back in progress.
+     */
+    public void updateStatus(int totalPages) {
+        boolean done = totalPages > 0 && totalPagesRead() >= totalPages;
+        if (done && status != BookingStatus.COMPLETED) {
+            this.status = BookingStatus.COMPLETED;
+            this.completedAt = Instant.now();
+        } else if (!done && status == BookingStatus.COMPLETED) {
+            this.status = BookingStatus.BOOKED;
+            this.completedAt = null;
+        }
     }
 
     public Long getId() {

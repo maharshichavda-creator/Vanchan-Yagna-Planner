@@ -108,13 +108,17 @@ public class StatusReportService {
             byName.computeIfAbsent(h.getName().trim().toLowerCase(Locale.ROOT), k -> new ArrayList<>()).add(h);
         }
         int totalPages = (int) bookRepository.sumTotalPages();
+        Map<Long, String> bookTitles = new HashMap<>();
+        bookRepository.findAll().forEach(b -> bookTitles.put(b.getId(), b.getTitle()));
         List<GroupReport> groups = groupRepository.findAllWithDetails().stream()
                 .map(g -> new GroupReport(g.getId(), g.getGroupName().getName(), g.getVanchanDate(),
                         g.getMembers().stream().map(member -> {
                             List<Haribhakt> matches = byName.getOrDefault(
                                     member.getName().trim().toLowerCase(Locale.ROOT), List.of());
                             return new GroupMember(member.getName(),
-                                    matches.size() == 1 ? mandalLabel(matches.get(0)) : null, member.getPagesRead());
+                                    matches.size() == 1 ? mandalLabel(matches.get(0)) : null,
+                                    member.getBookId() == null ? null : bookTitles.get(member.getBookId()),
+                                    member.getPagesRead());
                         }).toList(),
                         g.totalPagesRead(), totalPages, GroupVanchanDto.percent(g.totalPagesRead(), totalPages),
                         g.getStatus()))

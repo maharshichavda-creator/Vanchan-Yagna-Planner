@@ -10,6 +10,10 @@ public class GroupVanchanMember {
     @Column(name = "haribhakt_name", nullable = false, length = 120)
     private String name;
 
+    // The book this haribhakt reads in the group; null for groups created before books were assigned.
+    @Column(name = "book_id")
+    private Long bookId;
+
     // Nullable so the column can be added to a table that already has rows; null means nothing read yet.
     @Column(name = "pages_read")
     private Integer pagesRead;
@@ -17,12 +21,17 @@ public class GroupVanchanMember {
     protected GroupVanchanMember() {
     }
 
-    public GroupVanchanMember(String name) {
+    public GroupVanchanMember(String name, Long bookId) {
         this.name = name;
+        this.bookId = bookId;
     }
 
     public String getName() {
         return name;
+    }
+
+    public Long getBookId() {
+        return bookId;
     }
 
     public int getPagesRead() {

@@ -1,9 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { GroupName, GroupVanchan } from '../../core/models';
+import { GroupName, GroupVanchan, VanchanBook } from '../../core/models';
 import { CelebrationService } from '../../core/celebration.service';
-import { SessionService } from '../../core/session.service';
 import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
 
 @Component({
@@ -34,17 +33,14 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
           </label>
         </div>
 
-        <label>
-          Haribhakt names
-          <div class="row">
-            <input name="member" [(ngModel)]="memberName" placeholder="Enter a name and press Add" maxlength="120"
-                   (keydown.enter)="addMember($event)" />
-            <button type="button" (click)="addMember()" [disabled]="!memberName.trim()">Add</button>
-          </div>
-        </label>
-        <div class="chips">
-          @for (m of members(); track $index) {
-            <span class="chip">{{ m }} <button type="button" class="link" (click)="removeMember($index)" aria-label="Remove">×</button></span>
+        <div class="book-assign">
+          <div class="assign-head">Haribhakt for each book</div>
+          @for (b of books(); track b.id) {
+            <label class="book-row">
+              <span class="book-title">{{ b.title }} <small class="muted">· {{ b.totalPages }} pages</small></span>
+              <input [name]="'book' + b.id" [ngModel]="assigned()[b.id] ?? ''" (ngModelChange)="setAssigned(b.id, $event)"
+                     placeholder="Haribhakt name" maxlength="120" autocomplete="off" />
+            </label>
           }
         </div>
 
@@ -54,7 +50,7 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
         @if (error()) {
           <p class="error">{{ error() }}</p>
         }
-        <button type="submit" class="primary" [disabled]="busy() || !groupNameId || members().length === 0">Create group</button>
+        <button type="submit" class="primary" [disabled]="busy() || !groupNameId || !allAssigned()">Create group</button>
       </form>
     </section>
 
@@ -75,7 +71,12 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
                 <div class="muted pages-line">{{ g.pagesRead }} of {{ g.totalPages }} pages read</div>
                 <div class="chips">
                   @for (m of g.members; track $index) {
-                    <span class="chip">{{ m }}</span>
+                    <span class="chip">
+                      @if (m.bookTitle) {
+                        <b>{{ shortBook(m.bookTitle) }}</b> ·
+                      }
+                      {{ m.name }}
+                    </span>
                   }
                 </div>
               </div>
@@ -83,9 +84,6 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
                 <span class="badge" [class.done]="g.status === 'COMPLETED'">
                   {{ g.status === 'COMPLETED' ? 'Completed' : 'In progress' }}
                 </span>
-                @if (g.status === 'BOOKED') {
-                  <button type="button" (click)="complete(g)" [disabled]="busy()">Mark completed</button>
-                }
               </div>
             </li>
           }
@@ -97,13 +95,21 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
       <div class="modal-backdrop" (click)="closeProgress()">
         <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
           <h2>{{ g.groupName }}</h2>
-          <p class="muted">Enter the number of pages read by each haribhakt.</p>
+          <p class="muted">Enter the number of pages read by each haribhakt in their book.</p>
           <form (ngSubmit)="saveProgress()" novalidate>
             @for (m of g.members; track $index) {
               <label class="member-row">
-                <span>{{ m }}</span>
+                <span>
+                  @if (m.bookTitle) {
+                    <b>{{ shortBook(m.bookTitle) }}</b><br />
+                  }
+                  {{ m.name }}
+                  @if (m.bookPages) {
+                    <small class="muted"> · up to {{ m.bookPages }} pages</small>
+                  }
+                </span>
                 <input type="number" min="0" step="1" inputmode="numeric" [name]="'pages' + $index"
-                       [ngModel]="pages()[$index]" (ngModelChange)="setPages($index, $event)" />
+                       [max]="m.bookPages ?? g.totalPages" [ngModel]="pages()[$index]" (ngModelChange)="setPages($index, $event)" />
               </label>
             }
             <div class="progress-summary">
@@ -115,7 +121,7 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
             }
             <div class="actions modal-actions">
               <button type="button" (click)="closeProgress()">Cancel</button>
-              <button type="submit" class="primary" [disabled]="busy() || totalRead() > g.totalPages">Save</button>
+              <button type="submit" class="primary" [disabled]="busy() || tooMany()">Save</button>
             </div>
           </form>
         </div>
@@ -126,16 +132,30 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
 export class GroupVanchanPage implements OnInit {
   private readonly api = inject(YagnaApi);
   private readonly celebration = inject(CelebrationService);
-  protected readonly session = inject(SessionService);
 
   protected readonly groupNames = signal<GroupName[]>([]);
   protected readonly groups = signal<GroupVanchan[]>([]);
-  protected readonly members = signal<string[]>([]);
+  protected readonly books = signal<VanchanBook[]>([]);
+  // Book id -> name of the haribhakt who reads it in the new group.
+  protected readonly assigned = signal<Record<number, string>>({});
+  protected readonly allAssigned = computed(() => {
+    const names = this.assigned();
+    return this.books().length > 0 && this.books().every((b) => (names[b.id] ?? '').trim().length > 0);
+  });
   protected readonly ebookUrl = signal<string | null>(null);
   protected readonly selected = signal<GroupVanchan | null>(null);
   protected readonly pages = signal<number[]>([]);
   protected readonly modalError = signal('');
   protected readonly totalRead = computed(() => this.pages().reduce((sum, n) => sum + n, 0));
+  // True when the total, or any haribhakt's pages, is more than the books hold.
+  protected readonly tooMany = computed(() => {
+    const group = this.selected();
+    return (
+      !!group &&
+      (this.totalRead() > group.totalPages ||
+        group.members.some((m, i) => m.bookPages !== null && (this.pages()[i] ?? 0) > m.bookPages))
+    );
+  });
   protected readonly livePercent = computed(() => {
     const total = this.selected()?.totalPages ?? 0;
     return total > 0 ? Math.min(100, Math.round((this.totalRead() * 1000) / total) / 10) : 0;
@@ -146,14 +166,13 @@ export class GroupVanchanPage implements OnInit {
 
   protected groupNameId: number | null = null;
   protected date = todayIso();
-  protected memberName = '';
 
   ngOnInit(): void {
     this.api.settings().subscribe((s) => this.ebookUrl.set(s.ebookUrl));
-    const me = this.session.haribhakt();
-    if (me) {
-      this.members.set([me.name]);
-    }
+    this.api.groupBooks().subscribe({
+      next: (list) => this.books.set(list),
+      error: (err) => this.error.set(errorMessage(err))
+    });
     this.loadGroupNames();
     this.loadGroups();
   }
@@ -167,30 +186,27 @@ export class GroupVanchanPage implements OnInit {
     });
   }
 
-  protected addMember(event?: Event): void {
-    event?.preventDefault();
-    const name = this.memberName.trim();
-    if (name && !this.members().includes(name)) {
-      this.members.update((list) => [...list, name]);
-    }
-    this.memberName = '';
+  protected setAssigned(bookId: number, name: string): void {
+    this.assigned.update((current) => ({ ...current, [bookId]: name }));
   }
 
-  protected removeMember(index: number): void {
-    this.members.update((list) => list.filter((_, i) => i !== index));
+  /** "પ્રમુખસ્વામી મહારાજ જીવનચરિત્ર ભાગ - ૧" -> "ભાગ - ૧"; any other title is shown as it is. */
+  protected shortBook(title: string): string {
+    return title.match(/ભાગ.*$/)?.[0] ?? title;
   }
 
   protected create(): void {
-    if (this.groupNameId === null) {
+    if (this.groupNameId === null || !this.allAssigned()) {
       return;
     }
+    const assignments = this.books().map((b) => ({ bookId: b.id, haribhaktName: (this.assigned()[b.id] ?? '').trim() }));
     this.busy.set(true);
     this.error.set('');
-    this.api.createGroupVanchan(this.groupNameId, this.date, this.members()).subscribe({
+    this.api.createGroupVanchan(this.groupNameId, this.date, assignments).subscribe({
       next: () => {
         this.busy.set(false);
         this.groupNameId = null;
-        this.members.set(this.session.haribhakt() ? [this.session.haribhakt()!.name] : []);
+        this.assigned.set({});
         this.loadGroupNames();
         this.loadGroups();
       },
@@ -204,7 +220,7 @@ export class GroupVanchanPage implements OnInit {
 
   protected openProgress(group: GroupVanchan): void {
     this.modalError.set('');
-    this.pages.set([...group.memberPages]);
+    this.pages.set(group.members.map((m) => m.pagesRead));
     this.selected.set(group);
   }
 
@@ -225,29 +241,17 @@ export class GroupVanchanPage implements OnInit {
     this.busy.set(true);
     this.modalError.set('');
     this.api.updateGroupProgress(group.id, this.pages()).subscribe({
-      next: () => {
+      next: (updated) => {
         this.busy.set(false);
         this.selected.set(null);
+        // Reaching all pages completes the group automatically: celebrate that moment.
+        if (updated.status === 'COMPLETED' && group.status !== 'COMPLETED') {
+          this.celebration.petalShower();
+        }
         this.loadGroups();
       },
       error: (err) => {
         this.modalError.set(errorMessage(err));
-        this.busy.set(false);
-      }
-    });
-  }
-
-  protected complete(group: GroupVanchan): void {
-    this.busy.set(true);
-    this.error.set('');
-    this.api.completeGroupVanchan(group.id).subscribe({
-      next: () => {
-        this.busy.set(false);
-        this.celebration.petalShower();
-        this.loadGroups();
-      },
-      error: (err) => {
-        this.error.set(errorMessage(err));
         this.busy.set(false);
       }
     });

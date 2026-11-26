@@ -346,6 +346,36 @@ button {
   color: #d32f2f;
 }
 
+.book-assign {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .assign-head {
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+
+  .book-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    color: #2b2520;
+    flex-wrap: wrap;
+
+    .book-title {
+      flex: 1 1 260px;
+      font-size: 0.95rem;
+    }
+
+    input {
+      flex: 1 1 220px;
+      max-width: 280px;
+    }
+  }
+}
+
 .group-link {
   font-weight: 700;
   font-size: 1rem;

@@ -124,7 +124,7 @@ import { YagnaApi, errorMessage } from '../../core/yagna-api';
             <small class="muted">{{ g.date | date: 'dd MMM yyyy' }} · {{ g.pagesRead }} of {{ g.totalPages }} pages</small>
             <div class="chips">
               @for (member of g.members; track $index) {
-                <span class="chip">{{ member.name }}@if (member.mandal) { · {{ member.mandal }} } · {{ member.pagesRead }} pages</span>
+                <span class="chip">@if (member.bookTitle) { <b>{{ shortBook(member.bookTitle) }}</b> · }{{ member.name }}@if (member.mandal) { · {{ member.mandal }} } · {{ member.pagesRead }} pages</span>
               }
             </div>
           </div>
@@ -231,6 +231,11 @@ export class StatusReportPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
+  }
+
+  /** "પ્રમુખસ્વામી મહારાજ જીવનચરિત્ર ભાગ - ૧" -> "ભાગ - ૧"; any other title is shown as it is. */
+  protected shortBook(title: string): string {
+    return title.match(/ભાગ.*$/)?.[0] ?? title;
   }
 
   protected load(): void {

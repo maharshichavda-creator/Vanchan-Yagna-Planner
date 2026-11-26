@@ -5,7 +5,7 @@ Angular + Spring Boot + PostgreSQL app for booking Vanchan / Shravan Yagna.
 ## Features
 
 - **Vanchan Yagna** – a haribhakt picks a date and gets the next **15 consecutive pages** (never more) of one book, and the app shows which book and which page numbers to read. Books are read in order and a booking never spans two books (the last booking of a book can be shorter). a haribhakt can book any number of Vanchan slots, also several on the same date. Page ranges are handed out in sequence across *all* haribhakts and are never reused. The haribhakt marks the booking **Completed** after reading.
-- **Group Vanchan Yagna** – pick a group name from a list, add the haribhakt names, create the group, and mark it **Completed** when the vanchan is done.
+- **Group Vanchan Yagna** – pick a group name from a list and name the haribhakt who reads **each of the 12 books** (the books come from the `vanchan_book` table), then record the pages read per book. The group shows its completion percentage and is **completed automatically** once all 7034 pages (all books) have been read.
 - **Shravan Yagna** – a haribhakt picks a date and gets the next **1 audio track**. A haribhakt can book any number of tracks, also several on the same date. Tracks are handed out in sequence and never reused. Mark **Completed** after listening.
 
 Allocation is serialized with a row lock and protected by unique constraints (`start_page`, `track_id`), so concurrent bookings can never receive the same pages or track.

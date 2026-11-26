@@ -56,13 +56,27 @@ export interface GroupName {
   name: string;
 }
 
+export interface VanchanBook {
+  id: number;
+  sequenceNo: number;
+  title: string;
+  totalPages: number;
+}
+
+/** A haribhakt reading one book of a group; book fields are null for groups created before books were assigned. */
+export interface GroupMember {
+  name: string;
+  bookTitle: string | null;
+  bookPages: number | null;
+  pagesRead: number;
+}
+
 export interface GroupVanchan {
   id: number;
   groupNameId: number;
   groupName: string;
   date: string;
-  members: string[];
-  memberPages: number[];
+  members: GroupMember[];
   pagesRead: number;
   totalPages: number;
   percentComplete: number;
@@ -109,7 +123,7 @@ export interface StatusGroup {
   id: number;
   groupName: string;
   date: string;
-  members: { name: string; mandal: string | null; pagesRead: number }[];
+  members: { name: string; mandal: string | null; bookTitle: string | null; pagesRead: number }[];
   pagesRead: number;
   totalPages: number;
   percentComplete: number;

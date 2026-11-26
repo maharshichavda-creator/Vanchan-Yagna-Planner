@@ -11,6 +11,7 @@ import {
   ShravanBooking,
   ShravanSummary,
   StatusReport,
+  VanchanBook,
   VanchanBooking,
   VanchanSummary
 } from './models';
@@ -84,12 +85,16 @@ export class YagnaApi {
     return this.http.get<GroupVanchan[]>(`${this.base}/group-vanchan`);
   }
 
-  createGroupVanchan(groupNameId: number, date: string, members: string[]): Observable<GroupVanchan> {
-    return this.http.post<GroupVanchan>(`${this.base}/group-vanchan`, { groupNameId, date, members });
+  groupBooks(): Observable<VanchanBook[]> {
+    return this.http.get<VanchanBook[]>(`${this.base}/group-vanchan/books`);
   }
 
-  completeGroupVanchan(id: number): Observable<GroupVanchan> {
-    return this.http.post<GroupVanchan>(`${this.base}/group-vanchan/${id}/complete`, null);
+  createGroupVanchan(
+    groupNameId: number,
+    date: string,
+    assignments: { bookId: number; haribhaktName: string }[]
+  ): Observable<GroupVanchan> {
+    return this.http.post<GroupVanchan>(`${this.base}/group-vanchan`, { groupNameId, date, assignments });
   }
 
   updateGroupProgress(id: number, pagesRead: number[]): Observable<GroupVanchan> {

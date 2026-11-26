@@ -4,6 +4,7 @@ import com.psm.yagna.dto.GroupNameDto;
 import com.psm.yagna.dto.GroupProgressRequest;
 import com.psm.yagna.dto.GroupVanchanDto;
 import com.psm.yagna.dto.GroupVanchanRequest;
+import com.psm.yagna.dto.VanchanBookDto;
 import com.psm.yagna.service.GroupVanchanService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -32,6 +33,11 @@ public class GroupVanchanController {
         return groupVanchanService.groupNames();
     }
 
+    @GetMapping("/books")
+    public List<VanchanBookDto> books() {
+        return groupVanchanService.books();
+    }
+
     @GetMapping
     public List<GroupVanchanDto> list() {
         return groupVanchanService.list();
@@ -41,11 +47,6 @@ public class GroupVanchanController {
     @ResponseStatus(HttpStatus.CREATED)
     public GroupVanchanDto create(@Valid @RequestBody GroupVanchanRequest request) {
         return groupVanchanService.create(request);
-    }
-
-    @PostMapping("/{id}/complete")
-    public GroupVanchanDto complete(@PathVariable Long id) {
-        return groupVanchanService.complete(id);
     }
 
     @PutMapping("/{id}/progress")

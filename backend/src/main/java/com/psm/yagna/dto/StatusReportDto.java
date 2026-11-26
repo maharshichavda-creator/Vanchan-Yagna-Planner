@@ -30,7 +30,7 @@ public record StatusReportDto(
     }
 
     /** Group members are stored by name only; mandal is filled in when the name matches one registered haribhakt. */
-    public record GroupMember(String name, String mandal, int pagesRead) {
+    public record GroupMember(String name, String mandal, String bookTitle, int pagesRead) {
     }
 
     public record GroupReport(Long id, String groupName, LocalDate date, List<GroupMember> members, int pagesRead,
