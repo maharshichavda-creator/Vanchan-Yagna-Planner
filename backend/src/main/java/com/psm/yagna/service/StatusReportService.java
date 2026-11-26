@@ -5,6 +5,7 @@ import com.psm.yagna.domain.Haribhakt;
 import com.psm.yagna.domain.Mandal;
 import com.psm.yagna.domain.ShravanBooking;
 import com.psm.yagna.domain.VanchanBooking;
+import com.psm.yagna.dto.GroupVanchanDto;
 import com.psm.yagna.dto.StatusReportDto;
 import com.psm.yagna.dto.StatusReportDto.Counts;
 import com.psm.yagna.dto.StatusReportDto.GroupMember;
@@ -18,6 +19,7 @@ import com.psm.yagna.repository.GroupVanchanRepository;
 import com.psm.yagna.repository.HaribhaktRepository;
 import com.psm.yagna.repository.MandalRepository;
 import com.psm.yagna.repository.ShravanBookingRepository;
+import com.psm.yagna.repository.VanchanBookRepository;
 import com.psm.yagna.repository.VanchanBookingRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -40,16 +42,19 @@ public class StatusReportService {
     private final VanchanBookingRepository vanchanRepository;
     private final ShravanBookingRepository shravanRepository;
     private final GroupVanchanRepository groupRepository;
+    private final VanchanBookRepository bookRepository;
 
     public StatusReportService(HaribhaktService haribhaktService, HaribhaktRepository haribhaktRepository,
                                MandalRepository mandalRepository, VanchanBookingRepository vanchanRepository,
-                               ShravanBookingRepository shravanRepository, GroupVanchanRepository groupRepository) {
+                               ShravanBookingRepository shravanRepository, GroupVanchanRepository groupRepository,
+                               VanchanBookRepository bookRepository) {
         this.haribhaktService = haribhaktService;
         this.haribhaktRepository = haribhaktRepository;
         this.mandalRepository = mandalRepository;
         this.vanchanRepository = vanchanRepository;
         this.shravanRepository = shravanRepository;
         this.groupRepository = groupRepository;
+        this.bookRepository = bookRepository;
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +84,7 @@ public class StatusReportService {
                 .filter(h -> vanchanByHaribhakt.containsKey(h.getId()) || shravanByHaribhakt.containsKey(h.getId()))
                 .sorted(Comparator.comparing(h -> h.getName().toLowerCase(Locale.ROOT)))
                 .forEach(h -> byMandal.computeIfAbsent(mandalLabel(h), k -> new ArrayList<>())
-                        .add(new HaribhaktReport(h.getId(), h.getName(), h.getBapsId(),
+                        .add(new HaribhaktReport(h.getId(), h.getName(),
                                 vanchanByHaribhakt.getOrDefault(h.getId(), List.of()),
                                 shravanByHaribhakt.getOrDefault(h.getId(), List.of()))));
 
@@ -102,12 +107,16 @@ public class StatusReportService {
         for (Haribhakt h : allHaribhakts) {
             byName.computeIfAbsent(h.getName().trim().toLowerCase(Locale.ROOT), k -> new ArrayList<>()).add(h);
         }
+        int totalPages = (int) bookRepository.sumTotalPages();
         List<GroupReport> groups = groupRepository.findAllWithDetails().stream()
                 .map(g -> new GroupReport(g.getId(), g.getGroupName().getName(), g.getVanchanDate(),
-                        g.getMembers().stream().map(name -> {
-                            List<Haribhakt> matches = byName.getOrDefault(name.trim().toLowerCase(Locale.ROOT), List.of());
-                            return new GroupMember(name, matches.size() == 1 ? mandalLabel(matches.get(0)) : null);
+                        g.getMembers().stream().map(member -> {
+                            List<Haribhakt> matches = byName.getOrDefault(
+                                    member.getName().trim().toLowerCase(Locale.ROOT), List.of());
+                            return new GroupMember(member.getName(),
+                                    matches.size() == 1 ? mandalLabel(matches.get(0)) : null, member.getPagesRead());
                         }).toList(),
+                        g.totalPagesRead(), totalPages, GroupVanchanDto.percent(g.totalPagesRead(), totalPages),
                         g.getStatus()))
                 .toList();
 

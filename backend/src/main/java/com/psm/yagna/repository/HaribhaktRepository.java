@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface HaribhaktRepository extends JpaRepository<Haribhakt, Long> {
 
-    Optional<Haribhakt> findByBapsId(String bapsId);
+    Optional<Haribhakt> findFirstByNameIgnoreCaseAndMandalOrderByIdAsc(String name, String mandal);
 }

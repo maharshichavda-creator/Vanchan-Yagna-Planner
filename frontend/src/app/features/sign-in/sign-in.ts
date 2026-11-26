@@ -31,13 +31,6 @@ import { YagnaApi, errorMessage } from '../../core/yagna-api';
             <small class="error">Mandal is required</small>
           }
         </label>
-        <label>
-          <span>BAPS ID <span class="req">*</span></span>
-          <input name="bapsId" #bapsCtl="ngModel" [(ngModel)]="bapsId" required maxlength="20" autocomplete="off" autocapitalize="characters" />
-          @if ((bapsCtl.touched || attempted()) && !bapsId.trim()) {
-            <small class="error">BAPS ID is required</small>
-          }
-        </label>
         @if (error()) {
           <p class="error">{{ error() }}</p>
         }
@@ -53,7 +46,6 @@ export class SignIn implements OnInit {
 
   protected name = '';
   protected mandal = '';
-  protected bapsId = '';
   protected readonly mandals = signal<Mandal[]>([]);
   protected readonly attempted = signal(false);
   protected readonly busy = signal(false);
@@ -68,12 +60,12 @@ export class SignIn implements OnInit {
 
   protected submit(): void {
     this.attempted.set(true);
-    if (!this.name.trim() || !this.mandal.trim() || !this.bapsId.trim()) {
+    if (!this.name.trim() || !this.mandal.trim()) {
       return;
     }
     this.busy.set(true);
     this.error.set('');
-    this.api.signIn(this.name.trim(), this.mandal.trim(), this.bapsId.trim()).subscribe({
+    this.api.signIn(this.name.trim(), this.mandal.trim()).subscribe({
       next: (haribhakt) => {
         this.session.signIn(haribhakt);
         this.router.navigateByUrl('/');

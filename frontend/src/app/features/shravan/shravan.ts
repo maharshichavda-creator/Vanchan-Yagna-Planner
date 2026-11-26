@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ShravanBooking, ShravanSummary } from '../../core/models';
+import { CelebrationService } from '../../core/celebration.service';
 import { SessionService } from '../../core/session.service';
 import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
 
@@ -56,7 +57,7 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
               </div>
               <div class="actions">
                 <span class="badge" [class.done]="b.status === 'COMPLETED'">
-                  {{ b.status === 'COMPLETED' ? 'Completed' : 'Booked' }}
+                  {{ b.status === 'COMPLETED' ? 'Completed' : 'In Progress' }}
                 </span>
                 @if (b.status === 'BOOKED') {
                   <button type="button" (click)="complete(b)" [disabled]="busy()">Mark completed</button>
@@ -71,6 +72,7 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
 })
 export class Shravan implements OnInit {
   private readonly api = inject(YagnaApi);
+  private readonly celebration = inject(CelebrationService);
   private readonly hariId = inject(SessionService).haribhakt()!.id;
 
   protected readonly today = todayIso();
@@ -90,15 +92,18 @@ export class Shravan implements OnInit {
   }
 
   protected complete(booking: ShravanBooking): void {
-    this.run(this.api.completeShravan(booking.id, this.hariId));
+    this.run(this.api.completeShravan(booking.id, this.hariId), true);
   }
 
-  private run(request: ReturnType<YagnaApi['bookShravan']>): void {
+  private run(request: ReturnType<YagnaApi['bookShravan']>, celebrate = false): void {
     this.busy.set(true);
     this.error.set('');
     request.subscribe({
       next: () => {
         this.busy.set(false);
+        if (celebrate) {
+          this.celebration.petalShower();
+        }
         this.refresh();
       },
       error: (err) => {

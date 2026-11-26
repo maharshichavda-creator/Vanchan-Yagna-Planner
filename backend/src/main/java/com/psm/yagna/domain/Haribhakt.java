@@ -6,10 +6,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
+/** A haribhakt is identified by name + mandal (no password, no BAPS ID). */
 @Entity
-@Table(name = "haribhakt", uniqueConstraints = @UniqueConstraint(columnNames = "baps_id"))
+@Table(name = "haribhakt")
 public class Haribhakt {
 
     @Id
@@ -22,16 +22,12 @@ public class Haribhakt {
     @Column(nullable = false, length = 120)
     private String mandal;
 
-    @Column(name = "baps_id", nullable = false, length = 20)
-    private String bapsId;
-
     protected Haribhakt() {
     }
 
-    public Haribhakt(String name, String mandal, String bapsId) {
+    public Haribhakt(String name, String mandal) {
         this.name = name;
         this.mandal = mandal;
-        this.bapsId = bapsId;
     }
 
     public Long getId() {
@@ -42,19 +38,7 @@ public class Haribhakt {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public String getMandal() {
         return mandal;
-    }
-
-    public void setMandal(String mandal) {
-        this.mandal = mandal;
-    }
-
-    public String getBapsId() {
-        return bapsId;
     }
 }

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
+  AppSettings,
   GroupName,
   GroupVanchan,
   Haribhakt,
@@ -23,8 +24,12 @@ export class YagnaApi {
     return this.http.get<Mandal[]>(`${this.base}/mandals`);
   }
 
-  signIn(name: string, mandal: string, bapsId: string): Observable<Haribhakt> {
-    return this.http.post<Haribhakt>(`${this.base}/haribhakt/sign-in`, { name, mandal, bapsId });
+  signIn(name: string, mandal: string): Observable<Haribhakt> {
+    return this.http.post<Haribhakt>(`${this.base}/haribhakt/sign-in`, { name, mandal });
+  }
+
+  settings(): Observable<AppSettings> {
+    return this.http.get<AppSettings>(`${this.base}/settings`);
   }
 
   statusReport(haribhaktId: number): Observable<StatusReport> {
@@ -86,6 +91,10 @@ export class YagnaApi {
   completeGroupVanchan(id: number): Observable<GroupVanchan> {
     return this.http.post<GroupVanchan>(`${this.base}/group-vanchan/${id}/complete`, null);
   }
+
+  updateGroupProgress(id: number, pagesRead: number[]): Observable<GroupVanchan> {
+    return this.http.put<GroupVanchan>(`${this.base}/group-vanchan/${id}/progress`, { pagesRead });
+  }
 }
 
 export function errorMessage(err: unknown): string {
@@ -103,4 +112,9 @@ export function todayIso(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Writes a number with Gujarati digits, e.g. 12 -> ૧૨. */
+export function gujaratiNumber(n: number): string {
+  return String(n).replace(/\d/g, (d) => '૦૧૨૩૪૫૬૭૮૯'[Number(d)]);
 }

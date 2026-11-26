@@ -57,7 +57,7 @@ public class VanchanService {
 
     @Transactional(readOnly = true)
     public List<VanchanBookingDto> list(Long haribhaktId) {
-        return bookingRepository.findByHaribhaktIdOrderByBookingDateDescIdDesc(haribhaktId).stream()
+        return bookingRepository.findByHaribhaktIdOrderByIdDesc(haribhaktId).stream()
                 .map(VanchanBookingDto::from)
                 .toList();
     }
@@ -68,9 +68,6 @@ public class VanchanService {
             throw new IllegalArgumentException("Please select today or a future date");
         }
         Haribhakt haribhakt = haribhaktService.getOrThrow(haribhaktId);
-        if (bookingRepository.existsByHaribhaktIdAndBookingDate(haribhaktId, date)) {
-            throw new ConflictException("You have already booked a vanchan slot for this date");
-        }
 
         // Serialize allocation so two haribhakts can never be handed the same page range.
         lockRepository.lockByName(AllocationLock.VANCHAN)

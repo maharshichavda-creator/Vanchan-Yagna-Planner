@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.psm.yagna.domain.BookingStatus;
 import com.psm.yagna.dto.GroupNameDto;
+import com.psm.yagna.dto.GroupProgressRequest;
 import com.psm.yagna.dto.GroupVanchanDto;
 import com.psm.yagna.dto.GroupVanchanRequest;
 import com.psm.yagna.dto.HaribhaktDto;
@@ -47,35 +48,31 @@ class BookingFlowTests {
     @Autowired GroupVanchanService groupVanchanService;
     @Autowired StatusReportService statusReportService;
 
-    private HaribhaktDto haribhakt(String name, String bapsId) {
-        return haribhaktService.signIn(new HaribhaktLoginRequest(name, "NIBM", bapsId));
+    private HaribhaktDto haribhakt(String name) {
+        return haribhaktService.signIn(new HaribhaktLoginRequest(name, "NIBM"));
     }
 
     @Test
-    void signInReusesHaribhaktForSameBapsIdIgnoringCaseAndSpaces() {
-        HaribhaktDto first = haribhakt("Ram", "ab12345");
-        HaribhaktDto again = haribhakt("Ram Bhai", " AB12345 ");
+    void signInReusesHaribhaktForSameNameAndMandalIgnoringCaseAndSpaces() {
+        HaribhaktDto first = haribhakt("Ram Bhai");
+        HaribhaktDto again = haribhakt("  ram bhai ");
         assertThat(again.id()).isEqualTo(first.id());
-        assertThat(again.bapsId()).isEqualTo("AB12345");
         assertThat(again.mandal()).isEqualTo("NIBM");
+
+        HaribhaktDto otherMandal = haribhaktService.signIn(new HaribhaktLoginRequest("Ram Bhai", "M-NIBM"));
+        assertThat(otherMandal.id()).isNotEqualTo(first.id());
     }
 
     @Test
     void signInRejectsMandalNotInList() {
-        assertThatThrownBy(() -> haribhaktService.signIn(new HaribhaktLoginRequest("Ram", "Unknown", "AB12345")))
+        assertThatThrownBy(() -> haribhaktService.signIn(new HaribhaktLoginRequest("Ram", "Unknown")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void signInRejectsInvalidBapsId() {
-        assertThatThrownBy(() -> haribhakt("Ram", "ab")).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> haribhakt("Ram", "AB 123")).isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
     void vanchanHandsOutConsecutivePageRangesWithinEachBookAcrossHaribhaktsAndDates() {
-        HaribhaktDto a = haribhakt("A", "9000000001");
-        HaribhaktDto b = haribhakt("B", "9000000002");
+        HaribhaktDto a = haribhakt("A");
+        HaribhaktDto b = haribhakt("B");
 
         VanchanBookingDto first = vanchanService.book(a.id(), DAY);
         VanchanBookingDto second = vanchanService.book(b.id(), DAY);
@@ -99,19 +96,21 @@ class BookingFlowTests {
     }
 
     @Test
-    void vanchanAllowsOnlyOneSlotPerHaribhaktPerDateAndRejectsPastDates() {
-        HaribhaktDto a = haribhakt("A", "9000000003");
-        vanchanService.book(a.id(), DAY);
+    void vanchanAllowsSeveralSlotsPerDateButRejectsPastDates() {
+        HaribhaktDto a = haribhakt("A");
+        VanchanBookingDto first = vanchanService.book(a.id(), DAY);
+        VanchanBookingDto second = vanchanService.book(a.id(), DAY);
 
-        assertThatThrownBy(() -> vanchanService.book(a.id(), DAY)).isInstanceOf(ConflictException.class);
+        assertThat(second.startPage()).isEqualTo(first.endPage() + 1);
+        assertThat(vanchanService.list(a.id())).extracting(VanchanBookingDto::id).containsExactly(second.id(), first.id());
         assertThatThrownBy(() -> vanchanService.book(a.id(), LocalDate.now().minusDays(1)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void vanchanCanBeMarkedCompletedOnlyByOwner() {
-        HaribhaktDto a = haribhakt("A", "9000000004");
-        HaribhaktDto b = haribhakt("B", "9000000005");
+        HaribhaktDto a = haribhakt("A");
+        HaribhaktDto b = haribhakt("B");
         VanchanBookingDto booking = vanchanService.book(a.id(), DAY);
 
         assertThatThrownBy(() -> vanchanService.complete(booking.id(), b.id())).isInstanceOf(RuntimeException.class);
@@ -121,8 +120,8 @@ class BookingFlowTests {
 
     @Test
     void shravanHandsOutOneUniqueTrackInSequence() {
-        HaribhaktDto a = haribhakt("A", "9000000006");
-        HaribhaktDto b = haribhakt("B", "9000000007");
+        HaribhaktDto a = haribhakt("A");
+        HaribhaktDto b = haribhakt("B");
 
         ShravanBookingDto first = shravanService.book(a.id(), DAY);
         ShravanBookingDto second = shravanService.book(b.id(), DAY);
@@ -134,10 +133,13 @@ class BookingFlowTests {
     }
 
     @Test
-    void shravanAllowsOnlyOneSlotPerHaribhaktPerDate() {
-        HaribhaktDto a = haribhakt("A", "9000000008");
-        shravanService.book(a.id(), DAY);
-        assertThatThrownBy(() -> shravanService.book(a.id(), DAY)).isInstanceOf(ConflictException.class);
+    void shravanAllowsSeveralTracksPerHaribhaktOnTheSameDate() {
+        HaribhaktDto a = haribhakt("A");
+        ShravanBookingDto first = shravanService.book(a.id(), DAY);
+        ShravanBookingDto second = shravanService.book(a.id(), DAY);
+
+        assertThat(List.of(first, second)).extracting(x -> x.track().sequenceNo()).containsExactly(1, 2);
+        assertThat(shravanService.list(a.id())).hasSize(2);
     }
 
     @Test
@@ -156,8 +158,8 @@ class BookingFlowTests {
 
     @Test
     void statusReportIsAdminOnlyAndGroupsActivityByMandal() {
-        HaribhaktDto ram = haribhakt("Ram", "RP00001");
-        HaribhaktDto admin = haribhakt("Admin", "ADM0001");
+        HaribhaktDto ram = haribhakt("Ram");
+        HaribhaktDto admin = haribhakt("Admin");
         VanchanBookingDto vanchan = vanchanService.book(ram.id(), DAY);
         vanchanService.complete(vanchan.id(), ram.id());
         shravanService.book(ram.id(), DAY);
@@ -174,6 +176,27 @@ class BookingFlowTests {
         assertThat(report.summary().shravan()).isEqualTo(new StatusReportDto.Counts(1, 1, 0));
         assertThat(report.summary().groupVanchan()).isEqualTo(new StatusReportDto.Counts(1, 1, 0));
         assertThat(report.groups().get(0).members()).extracting(m -> m.mandal()).containsExactly("NIBM", null);
+    }
+
+    @Test
+    void groupProgressIsStoredPerMemberAndShownAsPercentageOfAllPages() {
+        GroupNameDto groupName = groupVanchanService.groupNames().get(0);
+        GroupVanchanDto created = groupVanchanService.create(
+                new GroupVanchanRequest(groupName.id(), null, List.of("Ram", "Shyam")));
+        assertThat(created.totalPages()).isEqualTo(30);
+        assertThat(created.pagesRead()).isZero();
+
+        GroupVanchanDto updated = groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(6, 9)));
+
+        assertThat(updated.memberPages()).containsExactly(6, 9);
+        assertThat(updated.pagesRead()).isEqualTo(15);
+        assertThat(updated.percentComplete()).isEqualTo(50.0);
+        assertThat(groupVanchanService.list().get(0).percentComplete()).isEqualTo(50.0);
+
+        assertThatThrownBy(() -> groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(20, 11))))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> groupVanchanService.updateProgress(created.id(), new GroupProgressRequest(List.of(1))))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

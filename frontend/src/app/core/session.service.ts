@@ -26,8 +26,8 @@ export class SessionService {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const stored = raw ? (JSON.parse(raw) as Partial<Haribhakt>) : null;
-      // Sessions saved before name/mandal/BAPS ID sign-in lack some of these fields and must sign in again.
-      return stored?.id && stored.name && stored.mandal && stored.bapsId ? (stored as Haribhakt) : null;
+      // Sessions saved before the BAPS ID was removed still work; only name and mandal are needed.
+      return stored?.id && stored.name && stored.mandal ? ({ id: stored.id, name: stored.name, mandal: stored.mandal } as Haribhakt) : null;
     } catch {
       return null;
     }

@@ -1,6 +1,7 @@
 package com.psm.yagna.controller;
 
 import com.psm.yagna.dto.GroupNameDto;
+import com.psm.yagna.dto.GroupProgressRequest;
 import com.psm.yagna.dto.GroupVanchanDto;
 import com.psm.yagna.dto.GroupVanchanRequest;
 import com.psm.yagna.service.GroupVanchanService;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -44,5 +46,10 @@ public class GroupVanchanController {
     @PostMapping("/{id}/complete")
     public GroupVanchanDto complete(@PathVariable Long id) {
         return groupVanchanService.complete(id);
+    }
+
+    @PutMapping("/{id}/progress")
+    public GroupVanchanDto updateProgress(@PathVariable Long id, @Valid @RequestBody GroupProgressRequest request) {
+        return groupVanchanService.updateProgress(id, request);
     }
 }

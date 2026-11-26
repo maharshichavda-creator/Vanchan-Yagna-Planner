@@ -4,7 +4,6 @@ export interface Haribhakt {
   id: number;
   name: string;
   mandal: string;
-  bapsId: string;
 }
 
 export interface Mandal {
@@ -63,6 +62,10 @@ export interface GroupVanchan {
   groupName: string;
   date: string;
   members: string[];
+  memberPages: number[];
+  pagesRead: number;
+  totalPages: number;
+  percentComplete: number;
   status: BookingStatus;
 }
 
@@ -90,7 +93,6 @@ export interface StatusShravanEntry {
 export interface StatusHaribhakt {
   id: number;
   name: string;
-  bapsId: string;
   vanchan: StatusVanchanEntry[];
   shravan: StatusShravanEntry[];
 }
@@ -107,8 +109,15 @@ export interface StatusGroup {
   id: number;
   groupName: string;
   date: string;
-  members: { name: string; mandal: string | null }[];
+  members: { name: string; mandal: string | null; pagesRead: number }[];
+  pagesRead: number;
+  totalPages: number;
+  percentComplete: number;
   status: BookingStatus;
+}
+
+export interface AppSettings {
+  ebookUrl: string | null;
 }
 
 export interface StatusReport {

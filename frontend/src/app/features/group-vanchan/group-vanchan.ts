@@ -1,7 +1,8 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GroupName, GroupVanchan } from '../../core/models';
+import { CelebrationService } from '../../core/celebration.service';
 import { SessionService } from '../../core/session.service';
 import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
 
@@ -13,6 +14,9 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
 
     <section class="card">
       <h2>Create a vanchan group</h2>
+      @if (ebookUrl(); as url) {
+        <p class="ebook"><a [href]="url" target="_blank" rel="noopener noreferrer">eBook</a></p>
+      }
       <form (ngSubmit)="create()">
         <div class="row">
           <label>
@@ -65,8 +69,10 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
           @for (g of groups(); track g.id) {
             <li>
               <div>
-                <strong>{{ g.groupName }}</strong>
+                <button type="button" class="link group-link" (click)="openProgress(g)">{{ g.groupName }}</button>
+                <span class="badge pct">{{ g.percentComplete }}% read</span>
                 <small class="muted"> · {{ g.date | date: 'dd MMM yyyy' }}</small>
+                <div class="muted pages-line">{{ g.pagesRead }} of {{ g.totalPages }} pages read</div>
                 <div class="chips">
                   @for (m of g.members; track $index) {
                     <span class="chip">{{ m }}</span>
@@ -86,15 +92,54 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
         </ul>
       }
     </section>
+
+    @if (selected(); as g) {
+      <div class="modal-backdrop" (click)="closeProgress()">
+        <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+          <h2>{{ g.groupName }}</h2>
+          <p class="muted">Enter the number of pages read by each haribhakt.</p>
+          <form (ngSubmit)="saveProgress()" novalidate>
+            @for (m of g.members; track $index) {
+              <label class="member-row">
+                <span>{{ m }}</span>
+                <input type="number" min="0" step="1" inputmode="numeric" [name]="'pages' + $index"
+                       [ngModel]="pages()[$index]" (ngModelChange)="setPages($index, $event)" />
+              </label>
+            }
+            <div class="progress-summary">
+              <strong>{{ totalRead() }}</strong> of {{ g.totalPages }} pages read ({{ livePercent() }}%)
+              <div class="progress-bar"><div [style.width.%]="livePercent()"></div></div>
+            </div>
+            @if (modalError()) {
+              <p class="error">{{ modalError() }}</p>
+            }
+            <div class="actions modal-actions">
+              <button type="button" (click)="closeProgress()">Cancel</button>
+              <button type="submit" class="primary" [disabled]="busy() || totalRead() > g.totalPages">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
   `
 })
 export class GroupVanchanPage implements OnInit {
   private readonly api = inject(YagnaApi);
+  private readonly celebration = inject(CelebrationService);
   protected readonly session = inject(SessionService);
 
   protected readonly groupNames = signal<GroupName[]>([]);
   protected readonly groups = signal<GroupVanchan[]>([]);
   protected readonly members = signal<string[]>([]);
+  protected readonly ebookUrl = signal<string | null>(null);
+  protected readonly selected = signal<GroupVanchan | null>(null);
+  protected readonly pages = signal<number[]>([]);
+  protected readonly modalError = signal('');
+  protected readonly totalRead = computed(() => this.pages().reduce((sum, n) => sum + n, 0));
+  protected readonly livePercent = computed(() => {
+    const total = this.selected()?.totalPages ?? 0;
+    return total > 0 ? Math.min(100, Math.round((this.totalRead() * 1000) / total) / 10) : 0;
+  });
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -104,6 +149,7 @@ export class GroupVanchanPage implements OnInit {
   protected memberName = '';
 
   ngOnInit(): void {
+    this.api.settings().subscribe((s) => this.ebookUrl.set(s.ebookUrl));
     const me = this.session.haribhakt();
     if (me) {
       this.members.set([me.name]);
@@ -156,12 +202,48 @@ export class GroupVanchanPage implements OnInit {
     });
   }
 
+  protected openProgress(group: GroupVanchan): void {
+    this.modalError.set('');
+    this.pages.set([...group.memberPages]);
+    this.selected.set(group);
+  }
+
+  protected closeProgress(): void {
+    this.selected.set(null);
+  }
+
+  protected setPages(index: number, value: unknown): void {
+    const pages = Math.max(0, Math.floor(Number(value) || 0));
+    this.pages.update((list) => list.map((p, i) => (i === index ? pages : p)));
+  }
+
+  protected saveProgress(): void {
+    const group = this.selected();
+    if (!group) {
+      return;
+    }
+    this.busy.set(true);
+    this.modalError.set('');
+    this.api.updateGroupProgress(group.id, this.pages()).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.selected.set(null);
+        this.loadGroups();
+      },
+      error: (err) => {
+        this.modalError.set(errorMessage(err));
+        this.busy.set(false);
+      }
+    });
+  }
+
   protected complete(group: GroupVanchan): void {
     this.busy.set(true);
     this.error.set('');
     this.api.completeGroupVanchan(group.id).subscribe({
       next: () => {
         this.busy.set(false);
+        this.celebration.petalShower();
         this.loadGroups();
       },
       error: (err) => {

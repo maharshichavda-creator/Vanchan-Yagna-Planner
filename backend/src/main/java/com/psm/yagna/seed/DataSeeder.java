@@ -2,11 +2,13 @@ package com.psm.yagna.seed;
 
 import com.psm.yagna.config.YagnaProperties;
 import com.psm.yagna.domain.AllocationLock;
+import com.psm.yagna.domain.AppSetting;
 import com.psm.yagna.domain.GroupName;
 import com.psm.yagna.domain.Mandal;
 import com.psm.yagna.domain.ShravanTrack;
 import com.psm.yagna.domain.VanchanBook;
 import com.psm.yagna.repository.AllocationLockRepository;
+import com.psm.yagna.repository.AppSettingRepository;
 import com.psm.yagna.repository.GroupNameRepository;
 import com.psm.yagna.repository.MandalRepository;
 import com.psm.yagna.repository.ShravanTrackRepository;
@@ -32,18 +34,21 @@ public class DataSeeder implements ApplicationRunner {
     private final AllocationLockRepository lockRepository;
     private final GroupNameRepository groupNameRepository;
     private final MandalRepository mandalRepository;
+    private final AppSettingRepository settingRepository;
     private final ShravanTrackRepository trackRepository;
     private final VanchanBookRepository bookRepository;
     private final ResourceLoader resourceLoader;
     private final YagnaProperties properties;
 
     public DataSeeder(AllocationLockRepository lockRepository, GroupNameRepository groupNameRepository,
-                      MandalRepository mandalRepository, ShravanTrackRepository trackRepository,
+                      MandalRepository mandalRepository, AppSettingRepository settingRepository,
+                      ShravanTrackRepository trackRepository,
                       VanchanBookRepository bookRepository, ResourceLoader resourceLoader,
                       YagnaProperties properties) {
         this.lockRepository = lockRepository;
         this.groupNameRepository = groupNameRepository;
         this.mandalRepository = mandalRepository;
+        this.settingRepository = settingRepository;
         this.trackRepository = trackRepository;
         this.bookRepository = bookRepository;
         this.resourceLoader = resourceLoader;
@@ -79,6 +84,11 @@ public class DataSeeder implements ApplicationRunner {
 
         if (mandalRepository.count() == 0) {
             seedMandals();
+        }
+
+        if (!settingRepository.existsById(AppSetting.EBOOK_URL)) {
+            String url = properties.ebook().url();
+            settingRepository.save(new AppSetting(AppSetting.EBOOK_URL, url == null ? "" : url.trim()));
         }
     }
 

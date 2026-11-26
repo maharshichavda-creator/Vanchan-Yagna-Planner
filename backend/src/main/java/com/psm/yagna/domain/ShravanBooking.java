@@ -16,10 +16,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "shravan_booking", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_shravan_haribhakt_date", columnNames = {"haribhakt_id", "booking_date"}),
-        @UniqueConstraint(name = "uk_shravan_track", columnNames = "track_id")
-})
+@Table(name = "shravan_booking", uniqueConstraints =
+        @UniqueConstraint(name = "uk_shravan_track", columnNames = "track_id"))
 public class ShravanBooking {
 
     @Id

@@ -38,8 +38,7 @@ public class GroupVanchan {
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "group_vanchan_member", joinColumns = @JoinColumn(name = "group_vanchan_id"))
     @OrderColumn(name = "member_order")
-    @Column(name = "haribhakt_name", nullable = false, length = 120)
-    private List<String> members = new ArrayList<>();
+    private List<GroupVanchanMember> members = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -57,7 +56,18 @@ public class GroupVanchan {
     public GroupVanchan(GroupName groupName, LocalDate vanchanDate, List<String> members) {
         this.groupName = groupName;
         this.vanchanDate = vanchanDate;
-        this.members = new ArrayList<>(members);
+        this.members = new ArrayList<>(members.stream().map(GroupVanchanMember::new).toList());
+    }
+
+    /** Sets the pages read for each member, in member order. */
+    public void updatePagesRead(List<Integer> pagesRead) {
+        for (int i = 0; i < members.size(); i++) {
+            members.get(i).setPagesRead(pagesRead.get(i));
+        }
+    }
+
+    public int totalPagesRead() {
+        return members.stream().mapToInt(GroupVanchanMember::getPagesRead).sum();
     }
 
     public void markCompleted() {
@@ -77,7 +87,7 @@ public class GroupVanchan {
         return vanchanDate;
     }
 
-    public List<String> getMembers() {
+    public List<GroupVanchanMember> getMembers() {
         return members;
     }
 

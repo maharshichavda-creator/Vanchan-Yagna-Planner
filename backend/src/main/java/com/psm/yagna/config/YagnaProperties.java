@@ -14,7 +14,11 @@ public record YagnaProperties(
         @Valid @NotNull Vanchan vanchan,
         @Valid @NotNull Shravan shravan,
         @Valid @NotNull GroupVanchan groupVanchan,
-        @Valid @NotNull Mandal mandal) {
+        @Valid @NotNull Mandal mandal,
+        @Valid @NotNull Ebook ebook) {
+
+    public record Ebook(String url) {
+    }
 
     public record Mandal(@NotBlank String file) {
     }

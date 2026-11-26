@@ -73,7 +73,7 @@ import { YagnaApi, errorMessage } from '../../core/yagna-api';
           @for (h of m.haribhakts; track h.id) {
             <div class="person">
               <div>
-                <strong>{{ h.name }}</strong> <small class="muted">{{ h.bapsId }}</small>
+                <strong>{{ h.name }}</strong>
               </div>
               @if (h.vanchan.length) {
                 <div class="yagna-title">વાંચન યજ્ઞ</div>
@@ -116,15 +116,15 @@ import { YagnaApi, errorMessage } from '../../core/yagna-api';
         @for (g of r.groups; track g.id) {
           <div class="card group">
             <div class="group-head">
-              <strong>{{ g.groupName }}</strong>
+              <strong>{{ g.groupName }} <span class="badge pct">{{ g.percentComplete }}% read</span></strong>
               <span class="badge" [class.done]="g.status === 'COMPLETED'">
                 {{ g.status === 'COMPLETED' ? 'Completed' : 'Pending' }}
               </span>
             </div>
-            <small class="muted">{{ g.date | date: 'dd MMM yyyy' }}</small>
+            <small class="muted">{{ g.date | date: 'dd MMM yyyy' }} · {{ g.pagesRead }} of {{ g.totalPages }} pages</small>
             <div class="chips">
               @for (member of g.members; track $index) {
-                <span class="chip">{{ member.name }}@if (member.mandal) { · {{ member.mandal }} }</span>
+                <span class="chip">{{ member.name }}@if (member.mandal) { · {{ member.mandal }} } · {{ member.pagesRead }} pages</span>
               }
             </div>
           </div>

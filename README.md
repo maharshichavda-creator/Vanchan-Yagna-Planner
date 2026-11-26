@@ -4,13 +4,15 @@ Angular + Spring Boot + PostgreSQL app for booking Vanchan / Shravan Yagna.
 
 ## Features
 
-- **Vanchan Yagna** – a haribhakt picks a date and gets the next **15 consecutive pages** (never more) of one book, and the app shows which book and which page numbers to read. Books are read in order and a booking never spans two books (the last booking of a book can be shorter). One booking per haribhakt per date, any number of dates. Page ranges are handed out in sequence across *all* haribhakts and are never reused. The haribhakt marks the booking **Completed** after reading.
+- **Vanchan Yagna** – a haribhakt picks a date and gets the next **15 consecutive pages** (never more) of one book, and the app shows which book and which page numbers to read. Books are read in order and a booking never spans two books (the last booking of a book can be shorter). a haribhakt can book any number of Vanchan slots, also several on the same date. Page ranges are handed out in sequence across *all* haribhakts and are never reused. The haribhakt marks the booking **Completed** after reading.
 - **Group Vanchan Yagna** – pick a group name from a list, add the haribhakt names, create the group, and mark it **Completed** when the vanchan is done.
-- **Shravan Yagna** – a haribhakt picks a date and gets the next **1 audio track**. One booking per haribhakt per date, any number of dates. Tracks are handed out in sequence and never reused. Mark **Completed** after listening.
+- **Shravan Yagna** – a haribhakt picks a date and gets the next **1 audio track**. A haribhakt can book any number of tracks, also several on the same date. Tracks are handed out in sequence and never reused. Mark **Completed** after listening.
 
-Allocation is serialized with a row lock and protected by unique constraints (`start_page`, `track_id`, `haribhakt + date`), so concurrent bookings can never receive the same pages or track.
+Allocation is serialized with a row lock and protected by unique constraints (`start_page`, `track_id`), so concurrent bookings can never receive the same pages or track.
 
-Haribhakts identify themselves with name + mandal + BAPS ID (no password); the BAPS ID is the unique key (3–20 characters, no spaces, stored upper-case). The mandal is free text.
+Haribhakts identify themselves with name + mandal (no password, no BAPS ID); the same name (case-insensitive) in the same mandal is the same haribhakt. The mandal is picked from the `mandal` table.
+
+The **eBook** link shown on the Vanchan and Group Vanchan screens is stored in the `app_setting` table (`ebook_url`); change it directly in the database, e.g. `update app_setting set setting_value = 'https://...' where setting_key = 'ebook_url';`. The `EBOOK_URL` env var only provides the initial value on first start (default `https://baps.org`). A group's reading progress (pages read per haribhakt, out of all 7034 book pages) is entered by clicking the group name.
 
 ## Run locally
 

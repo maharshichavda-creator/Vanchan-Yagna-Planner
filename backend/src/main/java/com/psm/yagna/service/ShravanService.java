@@ -51,9 +51,6 @@ public class ShravanService {
             throw new IllegalArgumentException("Please select today or a future date");
         }
         Haribhakt haribhakt = haribhaktService.getOrThrow(haribhaktId);
-        if (bookingRepository.existsByHaribhaktIdAndBookingDate(haribhaktId, date)) {
-            throw new ConflictException("You have already booked a shravan slot for this date");
-        }
 
         // Serialize allocation so two haribhakts can never be handed the same audio track.
         lockRepository.lockByName(AllocationLock.SHRAVAN)

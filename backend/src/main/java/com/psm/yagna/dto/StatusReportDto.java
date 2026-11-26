@@ -20,8 +20,7 @@ public record StatusReportDto(
                                List<HaribhaktReport> haribhakts) {
     }
 
-    public record HaribhaktReport(Long id, String name, String bapsId, List<VanchanEntry> vanchan,
-                                  List<ShravanEntry> shravan) {
+    public record HaribhaktReport(Long id, String name, List<VanchanEntry> vanchan, List<ShravanEntry> shravan) {
     }
 
     public record VanchanEntry(LocalDate date, String bookTitle, int startPage, int endPage, BookingStatus status) {
@@ -31,10 +30,10 @@ public record StatusReportDto(
     }
 
     /** Group members are stored by name only; mandal is filled in when the name matches one registered haribhakt. */
-    public record GroupMember(String name, String mandal) {
+    public record GroupMember(String name, String mandal, int pagesRead) {
     }
 
-    public record GroupReport(Long id, String groupName, LocalDate date, List<GroupMember> members,
-                              BookingStatus status) {
+    public record GroupReport(Long id, String groupName, LocalDate date, List<GroupMember> members, int pagesRead,
+                              int totalPages, double percentComplete, BookingStatus status) {
     }
 }
