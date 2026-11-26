@@ -27,6 +27,9 @@ import { SessionService } from './core/session.service';
           <a routerLink="/vanchan" routerLinkActive="active">વાંચન યજ્ઞ</a>
           <a routerLink="/group-vanchan" routerLinkActive="active">ગ્રુપ વાંચન યજ્ઞ</a>
           <a routerLink="/shravan" routerLinkActive="active">શ્રવણ યજ્ઞ</a>
+          @if (session.isAdmin()) {
+            <a routerLink="/status-report" routerLinkActive="active">Status Report</a>
+          }
         </nav>
       }
     </header>

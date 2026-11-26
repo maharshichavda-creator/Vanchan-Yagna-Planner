@@ -20,6 +20,16 @@ cd backend;  .\mvnw.cmd spring-boot:run   # API on :8080
 cd frontend; npm install; npm start       # UI on :4200
 ```
 
+## Progressive Web App
+
+The UI is an installable PWA (web manifest + Angular service worker; icons in `frontend/public/icons`). The service worker is only active in production builds, and installing needs HTTPS (or `localhost`):
+
+```powershell
+cd frontend; npm run build    # output in dist/frontend/browser
+```
+
+Serve that folder from a web server that also proxies `/api` to the backend (the production build calls `/api`), then use the browser's *Install app* option. Only the app shell and images are cached; bookings still need a connection.
+
 Backend settings (env vars): `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `PORT`, `CORS_ALLOWED_ORIGINS`.
 
 ## Configuration to fill in

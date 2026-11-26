@@ -10,11 +10,14 @@ import com.psm.yagna.dto.GroupVanchanRequest;
 import com.psm.yagna.dto.HaribhaktDto;
 import com.psm.yagna.dto.HaribhaktLoginRequest;
 import com.psm.yagna.dto.ShravanBookingDto;
+import com.psm.yagna.dto.StatusReportDto;
 import com.psm.yagna.dto.VanchanBookingDto;
 import com.psm.yagna.exception.ConflictException;
+import com.psm.yagna.exception.ForbiddenException;
 import com.psm.yagna.service.GroupVanchanService;
 import com.psm.yagna.service.HaribhaktService;
 import com.psm.yagna.service.ShravanService;
+import com.psm.yagna.service.StatusReportService;
 import com.psm.yagna.service.VanchanService;
 import java.time.LocalDate;
 import java.util.List;
@@ -42,6 +45,7 @@ class BookingFlowTests {
     @Autowired VanchanService vanchanService;
     @Autowired ShravanService shravanService;
     @Autowired GroupVanchanService groupVanchanService;
+    @Autowired StatusReportService statusReportService;
 
     private HaribhaktDto haribhakt(String name, String bapsId) {
         return haribhaktService.signIn(new HaribhaktLoginRequest(name, "NIBM", bapsId));
@@ -148,6 +152,28 @@ class BookingFlowTests {
         assertThat(created.status()).isEqualTo(BookingStatus.BOOKED);
         assertThat(groupVanchanService.complete(created.id()).status()).isEqualTo(BookingStatus.COMPLETED);
         assertThat(groupVanchanService.list()).hasSize(1);
+    }
+
+    @Test
+    void statusReportIsAdminOnlyAndGroupsActivityByMandal() {
+        HaribhaktDto ram = haribhakt("Ram", "RP00001");
+        HaribhaktDto admin = haribhakt("Admin", "ADM0001");
+        VanchanBookingDto vanchan = vanchanService.book(ram.id(), DAY);
+        vanchanService.complete(vanchan.id(), ram.id());
+        shravanService.book(ram.id(), DAY);
+        GroupNameDto groupName = groupVanchanService.groupNames().get(0);
+        groupVanchanService.create(new GroupVanchanRequest(groupName.id(), null, List.of("Ram", "Stranger")));
+
+        assertThatThrownBy(() -> statusReportService.report(ram.id())).isInstanceOf(ForbiddenException.class);
+
+        StatusReportDto report = statusReportService.report(admin.id());
+        assertThat(report.mandals()).hasSize(1);
+        assertThat(report.mandals().get(0).mandal()).isEqualTo("NIBM");
+        assertThat(report.mandals().get(0).haribhakts()).extracting(h -> h.name()).containsExactly("Ram");
+        assertThat(report.summary().vanchan()).isEqualTo(new StatusReportDto.Counts(1, 0, 1));
+        assertThat(report.summary().shravan()).isEqualTo(new StatusReportDto.Counts(1, 1, 0));
+        assertThat(report.summary().groupVanchan()).isEqualTo(new StatusReportDto.Counts(1, 1, 0));
+        assertThat(report.groups().get(0).members()).extracting(m -> m.mandal()).containsExactly("NIBM", null);
     }
 
     @Test

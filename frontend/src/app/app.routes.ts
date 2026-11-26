@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { guestGuard, signedInGuard } from './core/guards';
+import { adminGuard, guestGuard, signedInGuard } from './core/guards';
 
 export const routes: Routes = [
   {
@@ -27,6 +27,11 @@ export const routes: Routes = [
     path: 'shravan',
     canActivate: [signedInGuard],
     loadComponent: () => import('./features/shravan/shravan').then((m) => m.Shravan)
+  },
+  {
+    path: 'status-report',
+    canActivate: [signedInGuard, adminGuard],
+    loadComponent: () => import('./features/status-report/status-report').then((m) => m.StatusReportPage)
   },
   { path: '**', redirectTo: '' }
 ];

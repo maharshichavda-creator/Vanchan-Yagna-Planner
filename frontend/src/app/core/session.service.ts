@@ -10,6 +10,7 @@ export class SessionService {
 
   readonly haribhakt = this.current.asReadonly();
   readonly isSignedIn = computed(() => this.current() !== null);
+  readonly isAdmin = computed(() => this.current()?.name.trim().toLowerCase() === 'admin');
 
   signIn(haribhakt: Haribhakt): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(haribhakt));

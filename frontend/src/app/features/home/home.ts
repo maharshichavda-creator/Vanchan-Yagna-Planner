@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { SessionService } from '../../core/session.service';
 
 @Component({
   selector: 'app-home',
@@ -19,7 +20,15 @@ import { RouterLink } from '@angular/router';
         <h2>શ્રવણ યજ્ઞ</h2>
         <p>Book a date and listen to your audio track.</p>
       </a>
+      @if (session.isAdmin()) {
+        <a class="tile" routerLink="/status-report">
+          <h2>Status Report</h2>
+          <p>Mandal-wise progress of all yagnas.</p>
+        </a>
+      }
     </div>
   `
 })
-export class Home {}
+export class Home {
+  protected readonly session = inject(SessionService);
+}

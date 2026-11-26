@@ -12,4 +12,7 @@ public interface ShravanBookingRepository extends JpaRepository<ShravanBooking, 
 
     @Query("select b from ShravanBooking b join fetch b.track where b.haribhakt.id = :haribhaktId order by b.bookingDate desc, b.id desc")
     List<ShravanBooking> findByHaribhakt(Long haribhaktId);
+
+    @Query("select b from ShravanBooking b join fetch b.haribhakt join fetch b.track order by b.bookingDate desc, b.id desc")
+    List<ShravanBooking> findAllWithDetails();
 }

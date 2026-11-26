@@ -65,3 +65,60 @@ export interface GroupVanchan {
   members: string[];
   status: BookingStatus;
 }
+
+export interface StatusCounts {
+  total: number;
+  pending: number;
+  completed: number;
+}
+
+export interface StatusVanchanEntry {
+  date: string;
+  bookTitle: string;
+  startPage: number;
+  endPage: number;
+  status: BookingStatus;
+}
+
+export interface StatusShravanEntry {
+  date: string;
+  trackNo: number;
+  trackTitle: string;
+  status: BookingStatus;
+}
+
+export interface StatusHaribhakt {
+  id: number;
+  name: string;
+  bapsId: string;
+  vanchan: StatusVanchanEntry[];
+  shravan: StatusShravanEntry[];
+}
+
+export interface StatusMandal {
+  mandal: string;
+  haribhaktCount: number;
+  vanchan: StatusCounts;
+  shravan: StatusCounts;
+  haribhakts: StatusHaribhakt[];
+}
+
+export interface StatusGroup {
+  id: number;
+  groupName: string;
+  date: string;
+  members: { name: string; mandal: string | null }[];
+  status: BookingStatus;
+}
+
+export interface StatusReport {
+  summary: {
+    mandals: number;
+    haribhakts: number;
+    vanchan: StatusCounts;
+    shravan: StatusCounts;
+    groupVanchan: StatusCounts;
+  };
+  mandals: StatusMandal[];
+  groups: StatusGroup[];
+}

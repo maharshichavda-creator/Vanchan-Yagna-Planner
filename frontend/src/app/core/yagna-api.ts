@@ -9,6 +9,7 @@ import {
   Mandal,
   ShravanBooking,
   ShravanSummary,
+  StatusReport,
   VanchanBooking,
   VanchanSummary
 } from './models';
@@ -24,6 +25,11 @@ export class YagnaApi {
 
   signIn(name: string, mandal: string, bapsId: string): Observable<Haribhakt> {
     return this.http.post<Haribhakt>(`${this.base}/haribhakt/sign-in`, { name, mandal, bapsId });
+  }
+
+  statusReport(haribhaktId: number): Observable<StatusReport> {
+    const params = new HttpParams().set('haribhaktId', haribhaktId);
+    return this.http.get<StatusReport>(`${this.base}/admin/status-report`, { params });
   }
 
   // Vanchan Yagna
