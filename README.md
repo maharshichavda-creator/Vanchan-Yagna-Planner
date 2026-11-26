@@ -30,7 +30,16 @@ cd frontend; npm run build    # output in dist/frontend/browser
 
 Serve that folder from a web server that also proxies `/api` to the backend (the production build calls `/api`), then use the browser's *Install app* option. Only the app shell and images are cached; bookings still need a connection.
 
-Backend settings (env vars): `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `PORT`, `CORS_ALLOWED_ORIGINS`.
+## Deploy on Render
+
+[render.yaml](render.yaml) is a Render Blueprint with two services: `vancha-yagna-backend` (Docker, Spring Boot) and `vancha-yagna` (static Angular PWA). The backend uses the existing production database `parasabha_planner` and keeps its tables in its own schema, `vanchan-yagna`, which it creates on first start (`DB_SCHEMA`).
+
+1. In Render choose **New > Blueprint**, connect this repo and apply `render.yaml`.
+2. When prompted, fill `DB_HOST`, `DB_USERNAME` and `DB_PASSWORD` from the `parasabha-planner-db` *Internal Database URL* (same region as the backend, `oregon`).
+3. If Render gives the services different URLs, update `CORS_ALLOWED_ORIGINS` (backend) and `API_BASE_URL` (frontend, then redeploy it).
+4. Add the two static-site headers listed at the bottom of `render.yaml` (Blueprints can't set them).
+
+Backend settings (env vars): `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_SCHEMA` (default `public`), `DB_USERNAME`, `DB_PASSWORD`, `PORT`, `CORS_ALLOWED_ORIGINS`.
 
 ## Configuration to fill in
 

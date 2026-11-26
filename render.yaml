@@ -1,0 +1,59 @@
+# Render Blueprint for the Vanchan / Shravan Yagna app.
+#
+# The backend reuses the existing production database "parasabha_planner" (Render allows only one free
+# Postgres) and keeps all of its tables in its own schema, "vanchan-yagna", which the app creates on startup.
+
+services:
+  # --- Backend: Spring Boot REST API (Docker) ---
+  - type: web
+    name: vancha-yagna-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /api/mandals
+    envVars:
+      # Enter these in the dashboard (copy from parasabha-planner-db > Connections > Internal Database URL).
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        value: parasabha_planner
+      - key: DB_SCHEMA
+        value: vanchan-yagna
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # Must match the frontend's URL; update if Render assigns a different one.
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://vancha-yagna.onrender.com
+      # Keep the JVM within the free plan's 512 MB limit.
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xmx320m -XX:+UseSerialGC"
+
+  # --- Frontend: Angular static site (PWA) ---
+  - type: web
+    name: vancha-yagna
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build:render
+    staticPublishPath: dist/frontend/browser
+    envVars:
+      # Angular 22's CLI requires Node >=22.22.3; Render's default Node is older.
+      - key: NODE_VERSION
+        value: "22.22.3"
+      # Must match the backend's URL; update if Render assigns a different one.
+      - key: API_BASE_URL
+        value: https://vancha-yagna-backend.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    # NOTE: Blueprints cannot set headers for static sites. In the Render Dashboard (Settings >
+    # Redirects/Rewrites & Headers) add for this service:
+    #   Path: /manifest.webmanifest   Name: Content-Type    Value: application/manifest+json
+    #   Path: /ngsw-worker.js         Name: Cache-Control   Value: no-cache
