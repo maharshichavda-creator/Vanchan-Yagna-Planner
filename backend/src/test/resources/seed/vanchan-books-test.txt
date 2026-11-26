@@ -1,0 +1,2 @@
+Test Book A|20
+Test Book B|10
