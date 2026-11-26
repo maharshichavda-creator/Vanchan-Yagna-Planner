@@ -41,7 +41,7 @@ public class ShravanController {
     @PostMapping("/bookings")
     @ResponseStatus(HttpStatus.CREATED)
     public ShravanBookingDto book(@Valid @RequestBody BookingRequest request) {
-        return shravanService.book(request.haribhaktId(), request.date());
+        return shravanService.book(request.haribhaktId());
     }
 
     @PostMapping("/bookings/{id}/complete")

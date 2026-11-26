@@ -1,13 +1,11 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { VanchanBooking, VanchanSummary } from '../../core/models';
 import { CelebrationService } from '../../core/celebration.service';
 import { SessionService } from '../../core/session.service';
-import { YagnaApi, errorMessage, gujaratiNumber, todayIso } from '../../core/yagna-api';
+import { YagnaApi, errorMessage, gujaratiNumber } from '../../core/yagna-api';
 
 @Component({
   selector: 'app-vanchan',
-  imports: [FormsModule],
   template: `
     <h1>વાંચન યજ્ઞ</h1>
 
@@ -23,16 +21,19 @@ import { YagnaApi, errorMessage, gujaratiNumber, todayIso } from '../../core/yag
     }
 
     <section class="card">
-      <h2>Book a vanchan slot</h2>
-      <form class="row" (ngSubmit)="book()">
-        <label>
-          Date
-          <input type="date" name="date" [(ngModel)]="date" [min]="today" required />
-        </label>
-        <button type="submit" class="primary" [disabled]="busy() || !date">Book slot</button>
-      </form>
-      @if (ebookUrl(); as url) {
-        <p class="ebook"><a [href]="url" target="_blank" rel="noopener noreferrer">eBook</a></p>
+      <div class="card-head">
+        <h2>Book a vanchan slot</h2>
+        @if (ebookUrl(); as url) {
+          <span class="ebook"><a [href]="url" target="_blank" rel="noopener noreferrer">eBook</a></span>
+        }
+      </div>
+      <div class="row">
+        <button type="button" class="primary" (click)="book()" [disabled]="busy() || loading() || hasOpenBooking()">
+          Book slot
+        </button>
+      </div>
+      @if (hasOpenBooking()) {
+        <p class="muted">Mark your current slot as completed to book a new one.</p>
       }
       @if (error()) {
         <p class="error">{{ error() }}</p>
@@ -50,7 +51,7 @@ import { YagnaApi, errorMessage, gujaratiNumber, todayIso } from '../../core/yag
           @for (b of bookings(); track b.id) {
             <li>
               <div>
-                <strong class="pushp">વાંચન પુષ્પ - {{ pushpNumbers().get(b.id) }}</strong>
+                <strong class="pushp">વાંચન પુષ્પ - {{ gujaratiNumber(b.pushpNumber) }}</strong>
                 <div class="book">{{ b.bookTitle }}</div>
                 <div class="big"><strong>Page {{ b.startPage }} to {{ b.endPage }}</strong></div>
                 <small class="muted">{{ b.pageCount }} pages</small>
@@ -75,12 +76,10 @@ export class Vanchan implements OnInit {
   private readonly celebration = inject(CelebrationService);
   private readonly hariId = inject(SessionService).haribhakt()!.id;
 
-  protected readonly today = todayIso();
-  protected date = this.today;
+  protected readonly gujaratiNumber = gujaratiNumber;
   protected readonly summary = signal<VanchanSummary | null>(null);
   protected readonly bookings = signal<VanchanBooking[]>([]);
-  // Booking id -> its "વાંચન પુષ્પ" number (Gujarati digits), counted from the first booking.
-  protected readonly pushpNumbers = signal(new Map<number, string>());
+  protected readonly hasOpenBooking = computed(() => this.bookings().some((b) => b.status === 'BOOKED'));
   protected readonly ebookUrl = signal<string | null>(null);
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
@@ -92,7 +91,7 @@ export class Vanchan implements OnInit {
   }
 
   protected book(): void {
-    this.run(this.api.bookVanchan(this.hariId, this.date));
+    this.run(this.api.bookVanchan(this.hariId));
   }
 
   protected complete(booking: VanchanBooking): void {
@@ -122,9 +121,6 @@ export class Vanchan implements OnInit {
     this.api.vanchanBookings(this.hariId).subscribe({
       next: (list) => {
         this.bookings.set(list);
-        const numbers = new Map<number, string>();
-        [...list].sort((a, b) => a.id - b.id).forEach((b, i) => numbers.set(b.id, gujaratiNumber(i + 1)));
-        this.pushpNumbers.set(numbers);
         this.loading.set(false);
       },
       error: (err) => {

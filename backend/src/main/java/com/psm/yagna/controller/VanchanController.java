@@ -39,7 +39,7 @@ public class VanchanController {
     @PostMapping("/bookings")
     @ResponseStatus(HttpStatus.CREATED)
     public VanchanBookingDto book(@Valid @RequestBody BookingRequest request) {
-        return vanchanService.book(request.haribhaktId(), request.date());
+        return vanchanService.book(request.haribhaktId());
     }
 
     @PostMapping("/bookings/{id}/complete")

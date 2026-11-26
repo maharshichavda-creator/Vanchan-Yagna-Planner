@@ -322,8 +322,25 @@ button {
   margin-left: 0.4rem;
 }
 
+/* Heading with an action (e.g. eBook link) right beside it */
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+
+  h2 {
+    margin: 0;
+  }
+}
+
 .ebook {
   margin: 0 0 0.75rem;
+
+  .card-head > & {
+    margin: 0;
+  }
 
   a {
     display: inline-block;

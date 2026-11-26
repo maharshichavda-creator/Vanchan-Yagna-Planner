@@ -1,5 +1,6 @@
 package com.psm.yagna.repository;
 
+import com.psm.yagna.domain.BookingStatus;
 import com.psm.yagna.domain.VanchanBooking;
 import java.util.List;
 import java.util.Optional;
@@ -11,6 +12,10 @@ public interface VanchanBookingRepository extends JpaRepository<VanchanBooking, 
 
     @EntityGraph(attributePaths = "book")
     List<VanchanBooking> findByHaribhaktIdOrderByIdDesc(Long haribhaktId);
+
+    boolean existsByHaribhaktIdAndStatus(Long haribhaktId, BookingStatus status);
+
+    long countByIdLessThanEqual(Long id);
 
     @Query("select b from VanchanBooking b join fetch b.haribhakt join fetch b.book order by b.bookingDate desc, b.id desc")
     List<VanchanBooking> findAllWithDetails();

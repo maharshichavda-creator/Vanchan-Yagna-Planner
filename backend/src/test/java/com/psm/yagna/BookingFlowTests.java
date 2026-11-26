@@ -42,8 +42,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class BookingFlowTests {
 
-    private static final LocalDate DAY = LocalDate.now().plusDays(1);
-
     @Autowired HaribhaktService haribhaktService;
     @Autowired VanchanService vanchanService;
     @Autowired ShravanService shravanService;
@@ -76,9 +74,10 @@ class BookingFlowTests {
         HaribhaktDto a = haribhakt("A");
         HaribhaktDto b = haribhakt("B");
 
-        VanchanBookingDto first = vanchanService.book(a.id(), DAY);
-        VanchanBookingDto second = vanchanService.book(b.id(), DAY);
-        VanchanBookingDto third = vanchanService.book(a.id(), DAY.plusDays(1));
+        VanchanBookingDto first = vanchanService.book(a.id());
+        VanchanBookingDto second = vanchanService.book(b.id());
+        vanchanService.complete(first.id(), a.id());
+        VanchanBookingDto third = vanchanService.book(a.id());
 
         // Test Book A has 20 pages: the second booking gets only the 5 pages left in that book
         assertThat(first.bookTitle()).isEqualTo("Test Book A");
@@ -94,26 +93,43 @@ class BookingFlowTests {
         assertThat(vanchanService.summary().remainingPages()).isZero();
         assertThat(vanchanService.summary().nextBookTitle()).isNull();
 
-        assertThatThrownBy(() -> vanchanService.book(b.id(), DAY.plusDays(1))).isInstanceOf(ConflictException.class);
+        vanchanService.complete(second.id(), b.id());
+        assertThatThrownBy(() -> vanchanService.book(b.id())).isInstanceOf(ConflictException.class);
     }
 
     @Test
-    void vanchanAllowsSeveralSlotsPerDateButRejectsPastDates() {
+    void vanchanNumbersAreSequentialAcrossAllHaribhakts() {
         HaribhaktDto a = haribhakt("A");
-        VanchanBookingDto first = vanchanService.book(a.id(), DAY);
-        VanchanBookingDto second = vanchanService.book(a.id(), DAY);
+        HaribhaktDto b = haribhakt("B");
+        VanchanBookingDto first = vanchanService.book(a.id());
+        VanchanBookingDto second = vanchanService.book(b.id());
+        vanchanService.complete(first.id(), a.id());
+        VanchanBookingDto third = vanchanService.book(a.id());
 
+        assertThat(List.of(first, second, third)).extracting(VanchanBookingDto::pushpNumber).containsExactly(1L, 2L, 3L);
+        assertThat(vanchanService.list(b.id())).extracting(VanchanBookingDto::pushpNumber).containsExactly(2L);
+        assertThat(vanchanService.list(a.id())).extracting(VanchanBookingDto::pushpNumber).containsExactly(3L, 1L);
+    }
+
+    @Test
+    void vanchanNewSlotRequiresPreviousSlotToBeCompleted() {
+        HaribhaktDto a = haribhakt("A");
+        VanchanBookingDto first = vanchanService.book(a.id());
+
+        assertThat(first.date()).isEqualTo(LocalDate.now());
+        assertThatThrownBy(() -> vanchanService.book(a.id())).isInstanceOf(ConflictException.class);
+
+        vanchanService.complete(first.id(), a.id());
+        VanchanBookingDto second = vanchanService.book(a.id());
         assertThat(second.startPage()).isEqualTo(first.endPage() + 1);
         assertThat(vanchanService.list(a.id())).extracting(VanchanBookingDto::id).containsExactly(second.id(), first.id());
-        assertThatThrownBy(() -> vanchanService.book(a.id(), LocalDate.now().minusDays(1)))
-                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void vanchanCanBeMarkedCompletedOnlyByOwner() {
         HaribhaktDto a = haribhakt("A");
         HaribhaktDto b = haribhakt("B");
-        VanchanBookingDto booking = vanchanService.book(a.id(), DAY);
+        VanchanBookingDto booking = vanchanService.book(a.id());
 
         assertThatThrownBy(() -> vanchanService.complete(booking.id(), b.id())).isInstanceOf(RuntimeException.class);
         assertThat(vanchanService.complete(booking.id(), a.id()).status()).isEqualTo(BookingStatus.COMPLETED);
@@ -125,21 +141,27 @@ class BookingFlowTests {
         HaribhaktDto a = haribhakt("A");
         HaribhaktDto b = haribhakt("B");
 
-        ShravanBookingDto first = shravanService.book(a.id(), DAY);
-        ShravanBookingDto second = shravanService.book(b.id(), DAY);
-        ShravanBookingDto third = shravanService.book(a.id(), DAY.plusDays(1));
+        ShravanBookingDto first = shravanService.book(a.id());
+        ShravanBookingDto second = shravanService.book(b.id());
+        shravanService.complete(first.id(), a.id());
+        ShravanBookingDto third = shravanService.book(a.id());
 
         assertThat(List.of(first, second, third)).extracting(x -> x.track().sequenceNo()).containsExactly(1, 2, 3);
         assertThat(shravanService.summary().remainingTracks()).isZero();
-        assertThatThrownBy(() -> shravanService.book(b.id(), DAY.plusDays(1))).isInstanceOf(ConflictException.class);
+        shravanService.complete(second.id(), b.id());
+        assertThatThrownBy(() -> shravanService.book(b.id())).isInstanceOf(ConflictException.class);
     }
 
     @Test
-    void shravanAllowsSeveralTracksPerHaribhaktOnTheSameDate() {
+    void shravanNewSlotRequiresPreviousSlotToBeCompleted() {
         HaribhaktDto a = haribhakt("A");
-        ShravanBookingDto first = shravanService.book(a.id(), DAY);
-        ShravanBookingDto second = shravanService.book(a.id(), DAY);
+        ShravanBookingDto first = shravanService.book(a.id());
 
+        assertThat(first.date()).isEqualTo(LocalDate.now());
+        assertThatThrownBy(() -> shravanService.book(a.id())).isInstanceOf(ConflictException.class);
+
+        shravanService.complete(first.id(), a.id());
+        ShravanBookingDto second = shravanService.book(a.id());
         assertThat(List.of(first, second)).extracting(x -> x.track().sequenceNo()).containsExactly(1, 2);
         assertThat(shravanService.list(a.id())).hasSize(2);
     }
@@ -180,9 +202,9 @@ class BookingFlowTests {
     void statusReportIsAdminOnlyAndGroupsActivityByMandal() {
         HaribhaktDto ram = haribhakt("Ram");
         HaribhaktDto admin = haribhakt("Admin");
-        VanchanBookingDto vanchan = vanchanService.book(ram.id(), DAY);
+        VanchanBookingDto vanchan = vanchanService.book(ram.id());
         vanchanService.complete(vanchan.id(), ram.id());
-        shravanService.book(ram.id(), DAY);
+        shravanService.book(ram.id());
         GroupNameDto groupName = groupVanchanService.groupNames().get(0);
         groupVanchanService.create(groupRequest(groupName.id(), "Ram", "Stranger"));
 

@@ -30,6 +30,7 @@ export interface VanchanBooking {
   endPage: number;
   pageCount: number;
   status: BookingStatus;
+  pushpNumber: number;
 }
 
 export interface ShravanTrack {

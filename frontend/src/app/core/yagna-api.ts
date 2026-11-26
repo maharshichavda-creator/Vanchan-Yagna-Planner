@@ -48,8 +48,8 @@ export class YagnaApi {
     return this.http.get<VanchanBooking[]>(`${this.base}/vanchan/bookings`, { params });
   }
 
-  bookVanchan(haribhaktId: number, date: string): Observable<VanchanBooking> {
-    return this.http.post<VanchanBooking>(`${this.base}/vanchan/bookings`, { haribhaktId, date });
+  bookVanchan(haribhaktId: number): Observable<VanchanBooking> {
+    return this.http.post<VanchanBooking>(`${this.base}/vanchan/bookings`, { haribhaktId });
   }
 
   completeVanchan(bookingId: number, haribhaktId: number): Observable<VanchanBooking> {
@@ -67,8 +67,8 @@ export class YagnaApi {
     return this.http.get<ShravanBooking[]>(`${this.base}/shravan/bookings`, { params });
   }
 
-  bookShravan(haribhaktId: number, date: string): Observable<ShravanBooking> {
-    return this.http.post<ShravanBooking>(`${this.base}/shravan/bookings`, { haribhaktId, date });
+  bookShravan(haribhaktId: number): Observable<ShravanBooking> {
+    return this.http.post<ShravanBooking>(`${this.base}/shravan/bookings`, { haribhaktId });
   }
 
   completeShravan(bookingId: number, haribhaktId: number): Observable<ShravanBooking> {

@@ -2,6 +2,7 @@ package com.psm.yagna.service;
 
 import com.psm.yagna.config.YagnaProperties;
 import com.psm.yagna.domain.AllocationLock;
+import com.psm.yagna.domain.BookingStatus;
 import com.psm.yagna.domain.Haribhakt;
 import com.psm.yagna.domain.VanchanBook;
 import com.psm.yagna.domain.VanchanBooking;
@@ -58,16 +59,16 @@ public class VanchanService {
     @Transactional(readOnly = true)
     public List<VanchanBookingDto> list(Long haribhaktId) {
         return bookingRepository.findByHaribhaktIdOrderByIdDesc(haribhaktId).stream()
-                .map(VanchanBookingDto::from)
+                .map(b -> VanchanBookingDto.from(b, pushpNumber(b)))
                 .toList();
     }
 
     @Transactional
-    public VanchanBookingDto book(Long haribhaktId, LocalDate date) {
-        if (date.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Please select today or a future date");
-        }
+    public VanchanBookingDto book(Long haribhaktId) {
         Haribhakt haribhakt = haribhaktService.getOrThrow(haribhaktId);
+        if (bookingRepository.existsByHaribhaktIdAndStatus(haribhaktId, BookingStatus.BOOKED)) {
+            throw new ConflictException("Please mark your previous vanchan slot as completed before booking a new one");
+        }
 
         // Serialize allocation so two haribhakts can never be handed the same page range.
         lockRepository.lockByName(AllocationLock.VANCHAN)
@@ -76,7 +77,14 @@ public class VanchanService {
                 .orElseThrow(() -> new ConflictException("All pages have been allocated. No more vanchan slots are available"));
         // A booking never spans two books: the last booking of a book may be shorter than the usual size.
         int end = Math.min(next.page() + pagesPerBooking - 1, next.book().getTotalPages());
-        return VanchanBookingDto.from(bookingRepository.save(new VanchanBooking(haribhakt, next.book(), date, next.page(), end)));
+        VanchanBooking saved = bookingRepository.save(
+                new VanchanBooking(haribhakt, next.book(), LocalDate.now(), next.page(), end));
+        return VanchanBookingDto.from(saved, pushpNumber(saved));
+    }
+
+    /** "Vanchan pushp" number: the booking's position in the sequence of all bookings of all haribhakts. */
+    private long pushpNumber(VanchanBooking booking) {
+        return bookingRepository.countByIdLessThanEqual(booking.getId());
     }
 
     private Optional<NextPage> nextPage() {
@@ -100,6 +108,6 @@ public class VanchanService {
             throw new ResourceNotFoundException("Booking not found");
         }
         booking.markCompleted();
-        return VanchanBookingDto.from(booking);
+        return VanchanBookingDto.from(booking, pushpNumber(booking));
     }
 }

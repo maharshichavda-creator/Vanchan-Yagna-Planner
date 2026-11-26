@@ -1,14 +1,11 @@
-import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ShravanBooking, ShravanSummary } from '../../core/models';
 import { CelebrationService } from '../../core/celebration.service';
 import { SessionService } from '../../core/session.service';
-import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
+import { YagnaApi, errorMessage } from '../../core/yagna-api';
 
 @Component({
   selector: 'app-shravan',
-  imports: [FormsModule, DatePipe],
   template: `
     <h1>શ્રવણ યજ્ઞ</h1>
 
@@ -24,14 +21,20 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
     }
 
     <section class="card">
-      <h2>Book a shravan slot</h2>
-      <form class="row" (ngSubmit)="book()">
-        <label>
-          Date
-          <input type="date" name="date" [(ngModel)]="date" [min]="today" required />
-        </label>
-        <button type="submit" class="primary" [disabled]="busy() || !date">Book slot</button>
-      </form>
+      <div class="card-head">
+        <h2>Book a shravan slot</h2>
+        @if (ebookUrl(); as url) {
+          <span class="ebook"><a [href]="url" target="_blank" rel="noopener noreferrer">eBook</a></span>
+        }
+      </div>
+      <div class="row">
+        <button type="button" class="primary" (click)="book()" [disabled]="busy() || loading() || hasOpenBooking()">
+          Book slot
+        </button>
+      </div>
+      @if (hasOpenBooking()) {
+        <p class="muted">Mark your current slot as completed to book a new one.</p>
+      }
       @if (error()) {
         <p class="error">{{ error() }}</p>
       }
@@ -48,9 +51,7 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
           @for (b of bookings(); track b.id) {
             <li>
               <div>
-                <strong>{{ b.date | date: 'dd MMM yyyy' }}</strong>
                 <div class="big">{{ b.track.title }}</div>
-                <small class="muted">Track {{ b.track.sequenceNo }}</small>
                 @if (b.track.audioUrl) {
                   <audio controls preload="none" [src]="b.track.audioUrl"></audio>
                 }
@@ -75,20 +76,21 @@ export class Shravan implements OnInit {
   private readonly celebration = inject(CelebrationService);
   private readonly hariId = inject(SessionService).haribhakt()!.id;
 
-  protected readonly today = todayIso();
-  protected date = this.today;
   protected readonly summary = signal<ShravanSummary | null>(null);
   protected readonly bookings = signal<ShravanBooking[]>([]);
+  protected readonly ebookUrl = signal<string | null>(null);
+  protected readonly hasOpenBooking = computed(() => this.bookings().some((b) => b.status === 'BOOKED'));
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
 
   ngOnInit(): void {
+    this.api.settings().subscribe((s) => this.ebookUrl.set(s.ebookUrl));
     this.refresh();
   }
 
   protected book(): void {
-    this.run(this.api.bookShravan(this.hariId, this.date));
+    this.run(this.api.bookShravan(this.hariId));
   }
 
   protected complete(booking: ShravanBooking): void {
