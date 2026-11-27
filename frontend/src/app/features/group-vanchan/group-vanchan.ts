@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GroupName, GroupVanchan, VanchanBook } from '../../core/models';
 import { CelebrationService } from '../../core/celebration.service';
+import { SessionService } from '../../core/session.service';
 import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
 
 @Component({
@@ -65,7 +66,11 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
           @for (g of groups(); track g.id) {
             <li>
               <div>
-                <button type="button" class="link group-link" (click)="openProgress(g)">{{ g.groupName }}</button>
+                @if (canEdit(g)) {
+                  <button type="button" class="link group-link" (click)="openProgress(g)">{{ g.groupName }}</button>
+                } @else {
+                  <strong>{{ g.groupName }}</strong>
+                }
                 <span class="badge pct">{{ g.percentComplete }}% read</span>
                 <small class="muted"> · {{ g.date | date: 'dd MMM yyyy' }}</small>
                 <div class="muted pages-line">{{ g.pagesRead }} of {{ g.totalPages }} pages read</div>
@@ -132,7 +137,12 @@ import { YagnaApi, errorMessage, todayIso } from '../../core/yagna-api';
 export class GroupVanchanPage implements OnInit {
   private readonly api = inject(YagnaApi);
   private readonly celebration = inject(CelebrationService);
+  private readonly session = inject(SessionService);
 
+  /** Only the haribhakt who created a group can enter its pages read (older groups without a creator stay open). */
+  protected canEdit(group: GroupVanchan): boolean {
+    return group.createdById === null || group.createdById === this.session.haribhakt()?.id;
+  }
   protected readonly groupNames = signal<GroupName[]>([]);
   protected readonly groups = signal<GroupVanchan[]>([]);
   protected readonly books = signal<VanchanBook[]>([]);
@@ -196,13 +206,14 @@ export class GroupVanchanPage implements OnInit {
   }
 
   protected create(): void {
-    if (this.groupNameId === null || !this.allAssigned()) {
+    const haribhaktId = this.session.haribhakt()?.id;
+    if (this.groupNameId === null || !this.allAssigned() || !haribhaktId) {
       return;
     }
     const assignments = this.books().map((b) => ({ bookId: b.id, haribhaktName: (this.assigned()[b.id] ?? '').trim() }));
     this.busy.set(true);
     this.error.set('');
-    this.api.createGroupVanchan(this.groupNameId, this.date, assignments).subscribe({
+    this.api.createGroupVanchan(haribhaktId, this.groupNameId, this.date, assignments).subscribe({
       next: () => {
         this.busy.set(false);
         this.groupNameId = null;
@@ -235,12 +246,13 @@ export class GroupVanchanPage implements OnInit {
 
   protected saveProgress(): void {
     const group = this.selected();
-    if (!group) {
+    const haribhaktId = this.session.haribhakt()?.id;
+    if (!group || !haribhaktId) {
       return;
     }
     this.busy.set(true);
     this.modalError.set('');
-    this.api.updateGroupProgress(group.id, this.pages()).subscribe({
+    this.api.updateGroupProgress(group.id, haribhaktId, this.pages()).subscribe({
       next: (updated) => {
         this.busy.set(false);
         this.selected.set(null);

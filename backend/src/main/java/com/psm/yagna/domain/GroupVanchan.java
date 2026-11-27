@@ -44,6 +44,10 @@ public class GroupVanchan {
     @Column(nullable = false, length = 20)
     private BookingStatus status = BookingStatus.BOOKED;
 
+    /** The haribhakt who created the group; null for groups created before this was recorded. */
+    @Column(name = "created_by_id")
+    private Long createdById;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -53,8 +57,9 @@ public class GroupVanchan {
     protected GroupVanchan() {
     }
 
-    public GroupVanchan(GroupName groupName, LocalDate vanchanDate, List<GroupVanchanMember> members) {
+    public GroupVanchan(GroupName groupName, LocalDate vanchanDate, List<GroupVanchanMember> members, Long createdById) {
         this.groupName = groupName;
+        this.createdById = createdById;
         this.vanchanDate = vanchanDate;
         this.members = new ArrayList<>(members);
     }
@@ -87,6 +92,10 @@ public class GroupVanchan {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getCreatedById() {
+        return createdById;
     }
 
     public GroupName getGroupName() {

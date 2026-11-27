@@ -13,7 +13,8 @@ import java.util.Map;
  * is the pages read by all members out of {@code totalPages} (all books together).
  */
 public record GroupVanchanDto(Long id, Long groupNameId, String groupName, LocalDate date, List<MemberDto> members,
-                              int pagesRead, int totalPages, double percentComplete, BookingStatus status) {
+                              int pagesRead, int totalPages, double percentComplete, BookingStatus status,
+                              Long createdById) {
 
     /** {@code bookTitle} and {@code bookPages} are null for groups created before books were assigned. */
     public record MemberDto(String name, String bookTitle, Integer bookPages, int pagesRead) {
@@ -29,7 +30,8 @@ public record GroupVanchanDto(Long id, Long groupNameId, String groupName, Local
         int pagesRead = g.totalPagesRead();
         return new GroupVanchanDto(g.getId(), g.getGroupName().getId(), g.getGroupName().getName(), g.getVanchanDate(),
                 g.getMembers().stream().map(m -> MemberDto.from(m, books)).toList(),
-                pagesRead, totalPages, percent(pagesRead, totalPages), g.getStatus());
+                pagesRead, totalPages, percent(pagesRead, totalPages), g.getStatus(),
+                g.getCreatedById());
     }
 
     /** Percentage with one decimal place; 0 when there are no pages at all. */

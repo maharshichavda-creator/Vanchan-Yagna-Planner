@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -45,12 +46,13 @@ public class GroupVanchanController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public GroupVanchanDto create(@Valid @RequestBody GroupVanchanRequest request) {
-        return groupVanchanService.create(request);
+    public GroupVanchanDto create(@RequestParam Long haribhaktId, @Valid @RequestBody GroupVanchanRequest request) {
+        return groupVanchanService.create(request, haribhaktId);
     }
 
     @PutMapping("/{id}/progress")
-    public GroupVanchanDto updateProgress(@PathVariable Long id, @Valid @RequestBody GroupProgressRequest request) {
-        return groupVanchanService.updateProgress(id, request);
+    public GroupVanchanDto updateProgress(@PathVariable Long id, @RequestParam Long haribhaktId,
+                                          @Valid @RequestBody GroupProgressRequest request) {
+        return groupVanchanService.updateProgress(id, request, haribhaktId);
     }
 }

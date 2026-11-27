@@ -3,6 +3,7 @@ package com.psm.yagna.service;
 import com.psm.yagna.domain.GroupName;
 import com.psm.yagna.domain.GroupVanchan;
 import com.psm.yagna.domain.GroupVanchanMember;
+import com.psm.yagna.domain.Haribhakt;
 import com.psm.yagna.domain.VanchanBook;
 import com.psm.yagna.dto.GroupNameDto;
 import com.psm.yagna.dto.GroupProgressRequest;
@@ -10,6 +11,7 @@ import com.psm.yagna.dto.GroupVanchanDto;
 import com.psm.yagna.dto.GroupVanchanRequest;
 import com.psm.yagna.dto.VanchanBookDto;
 import com.psm.yagna.exception.ConflictException;
+import com.psm.yagna.exception.ForbiddenException;
 import com.psm.yagna.exception.ResourceNotFoundException;
 import com.psm.yagna.repository.GroupNameRepository;
 import com.psm.yagna.repository.GroupVanchanRepository;
@@ -31,9 +33,11 @@ public class GroupVanchanService {
     private final GroupNameRepository groupNameRepository;
     private final GroupVanchanRepository groupVanchanRepository;
     private final VanchanBookRepository bookRepository;
+    private final HaribhaktService haribhaktService;
 
     public GroupVanchanService(GroupNameRepository groupNameRepository, GroupVanchanRepository groupVanchanRepository,
-                               VanchanBookRepository bookRepository) {
+                               VanchanBookRepository bookRepository, HaribhaktService haribhaktService) {
+        this.haribhaktService = haribhaktService;
         this.groupNameRepository = groupNameRepository;
         this.groupVanchanRepository = groupVanchanRepository;
         this.bookRepository = bookRepository;
@@ -68,7 +72,8 @@ public class GroupVanchanService {
     }
 
     @Transactional
-    public GroupVanchanDto create(GroupVanchanRequest request) {
+    public GroupVanchanDto create(GroupVanchanRequest request, Long haribhaktId) {
+        Haribhakt creator = haribhaktService.getOrThrow(haribhaktId);
         GroupName groupName = groupNameRepository.findById(request.groupNameId())
                 .orElseThrow(() -> new ResourceNotFoundException("Group name not found"));
         if (groupVanchanRepository.existsByGroupNameId(groupName.getId())) {
@@ -94,14 +99,18 @@ public class GroupVanchanService {
             members.add(new GroupVanchanMember(name, book.getId()));
         }
         LocalDate date = request.date() != null ? request.date() : LocalDate.now();
-        return GroupVanchanDto.from(groupVanchanRepository.save(new GroupVanchan(groupName, date, members)),
+        return GroupVanchanDto.from(groupVanchanRepository.save(new GroupVanchan(groupName, date, members, creator.getId())),
                 totalPages(), books);
     }
 
     @Transactional
-    public GroupVanchanDto updateProgress(Long id, GroupProgressRequest request) {
+    public GroupVanchanDto updateProgress(Long id, GroupProgressRequest request, Long haribhaktId) {
         GroupVanchan group = groupVanchanRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Group vanchan not found"));
+        // Groups created before the creator was recorded have no owner and stay open to everyone.
+        if (group.getCreatedById() != null && !group.getCreatedById().equals(haribhaktId)) {
+            throw new ForbiddenException("Only the haribhakt who created the group can enter pages read");
+        }
         List<Integer> pagesRead = request.pagesRead();
         if (pagesRead.size() != group.getMembers().size()) {
             throw new IllegalArgumentException("Enter pages read for every haribhakt of the group");

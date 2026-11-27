@@ -90,15 +90,18 @@ export class YagnaApi {
   }
 
   createGroupVanchan(
+    haribhaktId: number,
     groupNameId: number,
     date: string,
     assignments: { bookId: number; haribhaktName: string }[]
   ): Observable<GroupVanchan> {
-    return this.http.post<GroupVanchan>(`${this.base}/group-vanchan`, { groupNameId, date, assignments });
+    const params = new HttpParams().set('haribhaktId', haribhaktId);
+    return this.http.post<GroupVanchan>(`${this.base}/group-vanchan`, { groupNameId, date, assignments }, { params });
   }
 
-  updateGroupProgress(id: number, pagesRead: number[]): Observable<GroupVanchan> {
-    return this.http.put<GroupVanchan>(`${this.base}/group-vanchan/${id}/progress`, { pagesRead });
+  updateGroupProgress(id: number, haribhaktId: number, pagesRead: number[]): Observable<GroupVanchan> {
+    const params = new HttpParams().set('haribhaktId', haribhaktId);
+    return this.http.put<GroupVanchan>(`${this.base}/group-vanchan/${id}/progress`, { pagesRead }, { params });
   }
 }
 

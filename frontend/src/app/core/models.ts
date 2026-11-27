@@ -82,6 +82,7 @@ export interface GroupVanchan {
   totalPages: number;
   percentComplete: number;
   status: BookingStatus;
+  createdById: number | null;
 }
 
 export interface StatusCounts {

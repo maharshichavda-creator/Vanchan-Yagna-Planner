@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class HaribhaktService {
 
-    public static final String ADMIN_NAME = "admin";
+    public static final String ADMIN_NAME = "pramukhadmin";
 
     private final HaribhaktRepository haribhaktRepository;
 
@@ -46,10 +46,10 @@ public class HaribhaktService {
         return ADMIN_NAME.equalsIgnoreCase(haribhakt.getName().trim());
     }
 
-    /** Only the haribhakt signed in with the name "admin" may see the status report. */
+    /** Only the haribhakt signed in with the     name "pramukhadmin" may see the status report. */
     public void requireAdmin(Long haribhaktId) {
         if (haribhaktId == null || !isAdmin(getOrThrow(haribhaktId))) {
-            throw new ForbiddenException("Only admin can view the status report");
+                throw new ForbiddenException("Only pramukhadmin can view the status report");
         }
     }
 }
